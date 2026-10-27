@@ -37,6 +37,8 @@ Com Node.js instalado, use uma cópia limpa da pasta do aplicativo oficial 0.4.0
 node desktop-mod/build-portable.cjs "C:\caminho\Idle Poke Moon" "C:\saida\IdleMoon-Automacoes"
 ```
 
-A saída deve ser uma pasta nova. Para distribuir, compacte **toda** a pasta gerada; o executável depende dos demais arquivos. A rotina do GitHub Actions baixa o instalador oficial, verifica seu SHA-512, extrai a base e publica o ZIP com um arquivo SHA-256 para conferência.
+A saída deve ser uma pasta nova. Para distribuir, compacte **toda** a pasta gerada; o executável depende dos demais arquivos. O ZIP desta release foi gerado localmente a partir da base verificada, sem ler dados de usuário, e acompanha um arquivo SHA-256 para conferência.
+
+O GitHub Actions executa os testes a cada alteração. Há também uma montagem manual (`workflow_dispatch`) que baixa e verifica o instalador oficial antes de gerar a release; ela depende de o site oficial permitir o download pelos servidores do GitHub. A proteção do site pode bloquear essa etapa. Nesse caso, use a montagem local descrita acima.
 
 Atualizações oficiais podem substituir as alterações. Esta versão é específica da base 0.4.0; uma exigência de versão nova pelo servidor requer uma nova base compatível.

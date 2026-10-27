@@ -13,7 +13,25 @@ concurrency:
   group: desktop-release
   cancel-in-progress: false
 jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test scripts
+        shell: pwsh
+        run: |
+          node desktop-mod/test-automacoes.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Automation tests failed' }
+          node desktop-mod/test-refill-card.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Refill tests failed' }
+          node desktop-mod/test-autocatch-card.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'AutoCatch tests failed' }
   release:
+    if: github.event_name == 'workflow_dispatch'
+    needs: verify
     runs-on: windows-latest
     timeout-minutes: 25
     steps:
