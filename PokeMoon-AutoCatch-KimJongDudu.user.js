@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         Poke Moon AutoCatch by KimJongDudu
 // @namespace    https://idlepokemoon.com.br/
-// @version      1.3.1
+// @version      1.4.0
 // @description  Auto Lançar em Minhas Capturas, com atalho na Mochila
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
 // @grant        none
+// @idlemoon-card autocatch-v1
 // ==/UserScript==
 
 (() => {
@@ -20,6 +21,47 @@
   catch { settings = { ...defaults }; }
   let sent = 0, lastAttempt = 0, panel, status, toggle, count, menuButton;
   const save = () => localStorage.setItem(KEY, JSON.stringify(settings));
+  if (window.__idleMoonCard) {
+    let running = false, message = 'Aguardando capturas';
+    const ATTEMPT = KEY + ':card-attempt';
+    lastAttempt = Number(localStorage.getItem(ATTEMPT)) || 0;
+    const interval = () => Math.max(750, Math.min(3000, Number(settings.intervalMs) || 1250));
+    function renderCard() {
+      let badge = document.getElementById('idlemoon-catch-card');
+      if (!badge && document.body) {
+        badge = document.createElement('div'); badge.id = 'idlemoon-catch-card';
+        badge.style.cssText = 'padding:10px;border:1px solid #71618c;border-radius:8px;font:12px Segoe UI;color:#f3d98a;background:#11152b';
+        document.body.append(badge);
+      }
+      const captures = window.__idleMoonCard.state?.captures;
+      if (badge) badge.textContent = 'AutoCatch ' + (settings.enabled ? 'ligado' : 'desligado') + ' · ' + message + ' · Lançamentos aceitos: ' + sent + ' · Na lista: ' + (Array.isArray(captures) ? captures.length : '—');
+    }
+    async function tickCard() {
+      if (!settings.enabled || running) { renderCard(); return; }
+      const bridge = window.__idleMoonCard;
+      const state = bridge.state;
+      if (!state || !Array.isArray(state.captures)) { message = 'Aguardando inventário do Card'; renderCard(); return; }
+      const capture = state.captures.find(c => settings.shiny || !c.shiny);
+      if (!capture) { message = 'Aguardando capturas'; renderCard(); return; }
+      if (!state.auto?.ball) { message = 'Selecione uma bola no jogo'; renderCard(); return; }
+      if (Date.now() - lastAttempt < interval()) { renderCard(); return; }
+      running = true;
+      lastAttempt = Date.now(); localStorage.setItem(ATTEMPT, String(lastAttempt));
+      try {
+        await bridge.action('throwBall', { captureId: capture.id, ball: state.auto.ball });
+        sent++; message = 'Lançamento enviado';
+      } catch (e) {
+        message = e.message || 'Lançamento recusado';
+        // Falha de rede ou recusa: espera antes de tentar novamente.
+        lastAttempt = Date.now() + 5000; localStorage.setItem(ATTEMPT, String(lastAttempt));
+      } finally { running = false; renderCard(); }
+    }
+    window.__idleMoonCatchTick = tickCard;
+    setInterval(() => { tickCard().catch(() => {}); }, 500);
+    renderCard();
+    return;
+  }
+
   const icon = new URL('icons/pokebola.png', location.href).href;
 
   const css = document.createElement('style');

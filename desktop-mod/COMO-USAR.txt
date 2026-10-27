@@ -1,0 +1,33 @@
+IDLE POKE MOON - MOD DE AUTOMACOES 0.4.0-mod1
+Mod nao oficial para Windows x64, por KimJongDudu.
+
+1. Extraia o ZIP inteiro para uma pasta nova. Nao abra o exe dentro do ZIP.
+2. Feche outra instancia do Idle Poke Moon e abra "Idle Poke Moon.exe".
+3. Entre com a sua propria conta.
+4. Abra Ajustes > Automacoes. AutoCatch e AutoRefill ja estao disponiveis e
+   inicialmente desligados em uma instalacao nova. Selecione as contas e ligue.
+5. Configure o AutoCatch em Mochila > AutoCatch. Configure os itens, minimos,
+   alvos e limite de gastos no painel do AutoRefill dentro do jogo.
+6. Depois de ligar cada automacao no proprio painel, voce pode mudar para Card.
+   O Card mostra o estado e os contadores. As configuracoes sao mantidas ao voltar.
+
+O ZIP nao contem login, senha, sessao, configuracoes ou registros do criador.
+Os dados criados em seu PC ficam na pasta IdlePokeMoon de APPDATA, a mesma usada
+pelo aplicativo oficial. Nao execute o oficial e o mod ao mesmo tempo.
+
+Se voce ja tinha automacoes instaladas, os dados existentes sao preservados.
+Para usar os scripts atualizados, remova apenas a versao antiga em Ajustes e
+instale novamente pelos links do repositorio:
+https://github.com/panicguy/idlepokemoon
+
+AutoRefill mantem ligado/desligado apos recarregar e desliga em erros de operacao.
+Vender tudo e comprar gastam itens e dinheiro DO JOGO conforme sua configuracao.
+AutoCatch respeita shinies, intervalo e bola selecionada. Lancamento aceito nao
+significa captura bem-sucedida. Instale somente scripts em que voce confia.
+
+Atualizacoes oficiais podem substituir o mod. Esta distribuicao e baseada na
+versao 0.4.0; guarde o ZIP para reinstalar a mesma versao. Se o servidor exigir
+uma versao nova, sera necessario atualizar a base do mod.
+
+Suporte, codigo e downloads:
+https://github.com/panicguy/idlepokemoon/releases

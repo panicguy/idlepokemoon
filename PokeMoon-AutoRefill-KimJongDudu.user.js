@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         PokeMoon AutoRefill by KimJongDudu
 // @namespace    https://github.com/panicguy/idlepokemoon
-// @version      1.0.0
+// @version      1.1.0
 // @description  Reabastece Pokebolas e Potions com estoque-alvo; venda opcional do loot antes da compra. Independente do AutoCatch.
 // @match        https://idlepokemoon.com.br/play*
 // @match        https://www.idlepokemoon.com.br/play*
 // @run-at       document-idle
 // @grant        none
+// @idlemoon-card autorefill-v1
 // ==/UserScript==
 
 (() => {
@@ -39,10 +40,22 @@
       items: Object.fromEntries(ITEMS.map(i => [i.key, { ...settings.items[i.key], ...(saved.items?.[i.key] || {}) }]))
     };
   } catch (_) { /* start with safe defaults */ }
-  // Never automatically resume purchases merely because a tab was reloaded.
-  settings.enabled = false;
+  // Restore only the state explicitly selected by the user. Errors still disable it.
+  settings.enabled = settings.enabled === true;
+  const COOLDOWN = STORAGE + ':next-run';
+  const rememberNextRun = value => { nextRun = value; localStorage.setItem(COOLDOWN, String(value)); };
   const save = () => localStorage.setItem(STORAGE, JSON.stringify(settings));
-  const state = () => window.gameState?._kTelaUlt;
+  // K is the current inventory used by the shop. gameState is a lexical
+  // global in current builds; it is not exposed as window.gameState.
+  const state = () => {
+    if (window.__idleMoonCard) return window.__idleMoonCard.state;
+    try { if (typeof K !== 'undefined' && K?.balls && K?.potions) return K; } catch (_) {}
+    try { if (typeof Ktela === 'function') { const s = Ktela(); if (s?.balls && s?.potions) return s; } } catch (_) {}
+    try { if (typeof gameState !== 'undefined' && gameState?._kTelaUlt) return gameState._kTelaUlt; } catch (_) {}
+    return window.gameState?._kTelaUlt || null;
+  };
+  const action = (name, payload) => window.__idleMoonCard
+    ? window.__idleMoonCard.action(name, payload) : window.Y(name, payload);
   const stock = (i) => {
     const n = (i.kind === 'ball' ? state()?.balls : state()?.potions)?.[i.item];
     return Number.isSafeInteger(n) && n >= 0 ? n : null;
@@ -50,7 +63,7 @@
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   const int = (v, low, high) => Math.min(high, Math.max(low, Math.floor(Number(v) || 0)));
   const money = n => '$ ' + n.toLocaleString('pt-BR');
-  let busy = false, timer = null, nextRun = 0, spentCycle = 0, statusText = 'Desligado', lastSuccess = '—';
+  let busy = false, timer = null, nextRun = Math.max(0, Number(localStorage.getItem(COOLDOWN)) || 0), spentCycle = 0, statusText = 'Desligado', lastSuccess = '—';
   let root, toggle, indicator, statusEl, summaryEl, itemRows = new Map();
 
   function log(message, error = false) {
@@ -60,6 +73,16 @@
     console[error ? 'warn' : 'info']('[PM AutoRefill]', message);
   }
   function update() {
+    if (window.__idleMoonCard) {
+      let badge = document.getElementById('idlemoon-refill-card');
+      if (!badge && document.body) {
+        badge = document.createElement('div'); badge.id = 'idlemoon-refill-card';
+        badge.style.cssText = 'padding:10px;border:1px solid #71618c;border-radius:8px;font:12px Segoe UI;color:#f3d98a;background:#11152b';
+        document.body.append(badge);
+      }
+      if (badge) badge.textContent = 'AutoRefill ' + (settings.enabled ? 'ligado' : 'desligado') + ' · ' + statusText + (state()?.potions ? ' · Ultimate: ' + (state().potions.ultimate ?? '—') : ' · aguardando inventário');
+      return;
+    }
     if (!root) return;
     root.classList.toggle('kjd-collapsed', settings.collapsed);
     toggle.textContent = settings.enabled ? 'Ligado' : 'Desligado';
@@ -90,7 +113,7 @@
   }
   async function cycle() {
     if (!settings.enabled || busy || Date.now() < nextRun) return;
-    if (typeof window.Y !== 'function') return log('Aguardando função do jogo Y()...');
+    if (!window.__idleMoonCard && typeof window.Y !== 'function') return log('Aguardando função do jogo Y()...');
     if (!state()?.balls || !state()?.potions) return log('Aguardando inventário do jogo...');
     const needs = ITEMS.filter(i => {
       const c = validConfig(i), have = stock(i);
@@ -98,12 +121,13 @@
     });
     if (!needs.length) return log('Estoque dentro dos limites');
     busy = true;
+    rememberNextRun(Date.now() + Math.max(30, int(settings.interval, 10, 3600)) * 1000);
     spentCycle = 0;
     try {
       if (settings.sellFirst) {
         log('Vendendo loot antes das compras...');
         // Equivalent to the Mark's "Vender tudo" action. Never sell on its own cycle.
-        const sold = await window.Y('sellLoot', { items: 'all' });
+        const sold = await action('sellLoot', { items: 'all' });
         if (responseError(sold)) throw new Error('Venda recusada; compras canceladas');
         await sleep(500);
       }
@@ -117,7 +141,7 @@
         const qty = Math.min(i.max, c.target - have, Math.floor(budget / i.price));
         if (qty <= 0) continue;
         log(`Comprando ${qty.toLocaleString('pt-BR')} × ${i.name}...`);
-        const result = await window.Y('buy', { item: i.item, qty, kind: i.kind });
+        const result = await action('buy', { item: i.item, qty, kind: i.kind });
         if (responseError(result)) throw new Error(`Compra recusada: ${i.name}`);
         const after = await waitStockChange(i, have);
         if (after === null || after <= have) {
@@ -136,7 +160,7 @@
       log(e.message || 'Erro na operação. AutoRefill desligado', true);
     } finally {
       busy = false;
-      nextRun = Date.now() + Math.max(10, int(settings.interval, 10, 3600)) * 1000;
+      rememberNextRun(Date.now() + Math.max(10, int(settings.interval, 10, 3600)) * 1000);
       update();
     }
   }
@@ -156,7 +180,7 @@
     return wrap;
   }
   function render() {
-    if (document.getElementById('kjd-autorefill')) return;
+    if (document.getElementById('kjd-autorefill') || window.__idleMoonCard) return;
     const style = make('style');
     style.textContent = `
       #kjd-autorefill{position:fixed;z-index:2147483500;top:140px;right:20px;width:365px;max-width:calc(100vw - 24px);color:#eae5d8;font:12px/1.4 Arial,sans-serif;background:linear-gradient(160deg,#242931,#11171d);border:1px solid #9f8150;border-radius:11px;box-shadow:0 7px 28px #000b;overflow:hidden}
@@ -184,7 +208,7 @@
     collapse.addEventListener('click', () => { settings.collapsed = !settings.collapsed; collapse.textContent = settings.collapsed ? '+' : '−'; save(); update(); });
     head.append(indicator, title, toggle, collapse); root.append(head);
     const body = make('div', 'kjd-content');
-    body.append(make('p','kjd-help','Ative cada item e defina: mínimo = gatilho; alvo = estoque desejado. Configurações começam desativadas.'));
+    body.append(make('p','kjd-help','Ative cada item e defina: mínimo = gatilho; alvo = estoque desejado. Ligado/desligado é mantido após recarregar.'));
     const sellLabel = make('label'); const sell = make('input'); sell.type = 'checkbox'; sell.checked = !!settings.sellFirst;
     sell.addEventListener('change', () => { settings.sellFirst = sell.checked; save(); });
     sellLabel.append(sell, document.createTextNode(' Vender tudo antes de comprar'));
@@ -214,7 +238,7 @@
     }
     statusEl = make('div','kjd-status',statusText);
     summaryEl = make('div','kjd-summary');
-    body.append(statusEl,summaryEl,make('div','kjd-warning','Venda "tudo" usa as regras do Mark. Em erros ou estoque não confirmado, o AutoRefill desliga. Não funciona sem a função Y() do jogo.'));
+    body.append(statusEl,summaryEl,make('div','kjd-warning','Venda "tudo" usa as regras do Mark. Em erros ou estoque não confirmado, o AutoRefill desliga. Compatível com o modo Card no aplicativo modificado.'));
     root.append(body); document.body.append(root);
     if (settings.x !== null && settings.y !== null) {
       root.style.left = `${Math.min(Math.max(0,settings.x),window.innerWidth - 60)}px`;
@@ -244,6 +268,7 @@
   function boot() {
     if (!document.body) return setTimeout(boot, 300);
     render();
+    window.__idleMoonRefillTick = () => { update(); return settings.enabled ? cycle() : Promise.resolve(); };
     timer = setInterval(() => {
       update();
       if (settings.enabled) cycle();

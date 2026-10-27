@@ -1,0 +1,76 @@
+name: Build desktop mod
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop-mod/**'
+      - 'PokeMoon-*.user.js'
+      - '.github/workflows/desktop-release.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: desktop-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test automation behavior
+        shell: pwsh
+        run: |
+          node desktop-mod/test-automacoes.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Automation tests failed' }
+          node desktop-mod/test-refill-card.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Refill tests failed' }
+          node desktop-mod/test-autocatch-card.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'AutoCatch tests failed' }
+      - name: Download and verify official base
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Invoke-WebRequest 'https://idlepokemoon.com.br/app/IdlePokeMoon-Setup-0.4.0.exe' -OutFile base-installer.exe
+          $expected = 'B8ogn1Xz/2W8u+RtWirNcH3BHTAOFjc9TuZxlHBB7KWIjFY3dsIzsTjyaa1DiBO1C50iHiffxb5W1zfhPm8osg=='
+          $actual = [Convert]::ToBase64String([Security.Cryptography.SHA512]::HashData([IO.File]::ReadAllBytes((Join-Path $PWD 'base-installer.exe'))))
+          if ($actual -ne $expected) { throw 'Official installer checksum mismatch' }
+          & 'C:\Program Files\7-Zip\7z.exe' x base-installer.exe '-obase-unpack' -y
+          if ($LASTEXITCODE -ne 0) { throw 'Installer extraction failed' }
+          $payload = @(Get-ChildItem base-unpack -Recurse -Filter app-64.7z)
+          if ($payload.Count -ne 1) { throw 'Expected one x64 application payload' }
+          & 'C:\Program Files\7-Zip\7z.exe' x $payload[0].FullName '-obase-app' -y
+          if ($LASTEXITCODE -ne 0) { throw 'Application extraction failed' }
+      - name: Build clean portable app
+        shell: pwsh
+        run: |
+          node desktop-mod/build-portable.cjs base-app out/IdleMoon-Automacoes-0.4.0-mod1
+          if ($LASTEXITCODE -ne 0) { throw 'Portable build failed' }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $zip = 'IdleMoon-Automacoes-0.4.0-mod1-Windows-x64.zip'
+          Compress-Archive -Path out/IdleMoon-Automacoes-0.4.0-mod1 -DestinationPath "dist/$zip" -CompressionLevel Optimal
+          $hash = (Get-FileHash "dist/$zip" -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText((Join-Path $PWD "dist/SHA256SUMS.txt"), "$hash  $zip`n")
+      - name: Publish downloadable release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = 'desktop-v0.4.0-mod1'
+          $notes = @'
+          Aplicativo portátil Windows x64 com menu Automações, AutoCatch e AutoRefill compatíveis com Card.
+          Extraia todo o ZIP e abra Idle Poke Moon.exe. Os scripts começam desligados para novos usuários.
+          Não inclui contas, sessões, preferências ou logs do criador. Mod não oficial baseado no Idle Poke Moon 0.4.0.
+          Leia o README para configuração e detalhes. SHA256SUMS.txt permite conferir o download.
+          '@
+          [IO.File]::WriteAllText((Join-Path $PWD 'release-notes.txt'), $notes)
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --target $env:GITHUB_SHA --title 'IdleMoon Automações 0.4.0-mod1 — Windows x64' --notes-file release-notes.txt
+            if ($LASTEXITCODE -ne 0) { throw 'Release creation failed' }
+          }
+          gh release upload $tag dist/*.zip dist/SHA256SUMS.txt --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Release upload failed' }
