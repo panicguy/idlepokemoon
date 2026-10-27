@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon AutoCatch by KimJongDudu
 // @namespace    https://idlepokemoon.com.br/
-// @version      1.3.0
+// @version      1.3.1
 // @description  Auto Lançar em Minhas Capturas, com atalho na Mochila
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -204,7 +204,9 @@
     if (!button) return;
     lastAttempt = now;
     try {
-      button.click();
+      // Chama a rotina vinculada pelo jogo diretamente, sem emitir evento de clique.
+      if (typeof button.onclick !== 'function') return;
+      button.onclick();
       sent++;
       render();
     } catch (error) {
