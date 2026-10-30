@@ -29,6 +29,21 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Refill tests failed' }
           node desktop-mod/test-autocatch-card.cjs
           if ($LASTEXITCODE -ne 0) { throw 'AutoCatch tests failed' }
+          node desktop-mod/test-script-update.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Update tests failed' }
+      - name: Test dock and icons in Electron
+        shell: pwsh
+        run: |
+          npm install --no-save --package-lock=false electron@44.6.0
+          if ($LASTEXITCODE -ne 0) { throw 'Electron setup failed' }
+          & .\node_modules\.bin\electron.cmd desktop-mod/test-ui-electron.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Electron UI tests failed' }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dock-ui-evidence
+          path: desktop-mod/ui-evidence/*.png
+          if-no-files-found: ignore
   release:
     if: github.event_name == 'workflow_dispatch'
     needs: verify
@@ -48,6 +63,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Refill tests failed' }
           node desktop-mod/test-autocatch-card.cjs
           if ($LASTEXITCODE -ne 0) { throw 'AutoCatch tests failed' }
+          node desktop-mod/test-script-update.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Update tests failed' }
       - name: Download and verify official base
         shell: pwsh
         run: |
@@ -65,11 +82,11 @@ jobs:
       - name: Build clean portable app
         shell: pwsh
         run: |
-          node desktop-mod/build-portable.cjs base-app out/IdleMoon-Automacoes-0.4.0-mod1
+          node desktop-mod/build-portable.cjs base-app out/IdleMoon-Automacoes-0.4.0-mod2
           if ($LASTEXITCODE -ne 0) { throw 'Portable build failed' }
           New-Item -ItemType Directory -Force dist | Out-Null
-          $zip = 'IdleMoon-Automacoes-0.4.0-mod1-Windows-x64.zip'
-          Compress-Archive -Path out/IdleMoon-Automacoes-0.4.0-mod1 -DestinationPath "dist/$zip" -CompressionLevel Optimal
+          $zip = 'IdleMoon-Automacoes-0.4.0-mod2-Windows-x64.zip'
+          Compress-Archive -Path out/IdleMoon-Automacoes-0.4.0-mod2 -DestinationPath "dist/$zip" -CompressionLevel Optimal
           $hash = (Get-FileHash "dist/$zip" -Algorithm SHA256).Hash.ToLowerInvariant()
           [IO.File]::WriteAllText((Join-Path $PWD "dist/SHA256SUMS.txt"), "$hash  $zip`n")
       - name: Publish downloadable release
@@ -77,7 +94,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = 'desktop-v0.4.0-mod1'
+          $tag = 'desktop-v0.4.0-mod2'
           $notes = @'
           Aplicativo portátil Windows x64 com menu Automações, AutoCatch e AutoRefill compatíveis com Card.
           Extraia todo o ZIP e abra Idle Poke Moon.exe. Os scripts começam desligados para novos usuários.
@@ -87,8 +104,9 @@ jobs:
           [IO.File]::WriteAllText((Join-Path $PWD 'release-notes.txt'), $notes)
           gh release view $tag *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --target $env:GITHUB_SHA --title 'IdleMoon Automações 0.4.0-mod1 — Windows x64' --notes-file release-notes.txt
+            gh release create $tag --target $env:GITHUB_SHA --title 'IdleMoon Automações 0.4.0-mod2 — Windows x64' --notes-file release-notes.txt
             if ($LASTEXITCODE -ne 0) { throw 'Release creation failed' }
           }
           gh release upload $tag dist/*.zip dist/SHA256SUMS.txt --clobber
           if ($LASTEXITCODE -ne 0) { throw 'Release upload failed' }
+

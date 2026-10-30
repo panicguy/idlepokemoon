@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Rota do Bestiário
 // @namespace    local.pokemoon.bestiario
-// @version      1.0.6
+// @version      1.0.7
 // @description  Visita hunts liberadas e captura uma espécie normal faltante por vez.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -24,49 +24,101 @@
   const completed = new Set();
   const totalBalls = s => Object.values(s.balls || {}).reduce((n, v) => n + Math.max(0, Number(v) || 0), 0);
 
-  const KJD_MAGMAR_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACMAAAAnCAMAAACylgF9AAABGWlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGBSSCwoyGESYGDIzSspCnJ3UoiIjFJgf8XAxSDLIM7AzSCfmFxc4BgQ4MMABDAaFXy7xsAIoi/rgszClMcLuFJSi5OB9B8gzk4uKCphYGDMALKVy0sKQOweIFskKRvMXgBiFwEdCGRvAbHTIewTYDUQ9h2wmpAgZyD7A5DNlwRmM4Hs4kuHsAVAbKi9ICDomJKflKoA8r2GoaWlhSaJfiAISlIrSkC0c35BZVFmekaJgiMwpFIVPPOS9XQUjAyMzBgYQOEOUf05EByejGJnEGIIgBCbI8HA4L+UgYHlD0LMpJeBYYEOAwP/VISYmiEDg4A+A8O+OcmlRWVQYxiZjBkYCPEBQ4VKavFzojUAAAGAUExURaJtV8lZJNmqSKlkJG5hVJMzJJ+hnu3VbnNwbGxsbaaLX6mVkvDPPIx2b7ylNLCmoeWeKMO1rujq6Tc3Nz8+RVxQMmRYRn6Afql/gKqmpr///+/ehwAAAFAZD44lFjAWD68nFnAlFf///2scEFMmEtFHMxAIB1NGMpEbEY52KL29vU03FCwjF1pYVnM1GLA4JsqnMTINCFVGF25YGqmKKMgrF86ZLMnJyWtra88yGhkZF3NnZcw5J0tFRmpJGXdzc62qpysoKFQ4LmtXVJWUkzo1G0ssKVtbWJBnJoODg614K9bW1vPWTzc1NJBHKYxbGqWlpbSzs/j6+XZ3d7BoHbWXK9N0LNKyNPCmUevJSGk2LotGGIyIhpeVlbMwGtSJKOi5M+/IMfjWZ0dHR3EpI3VFKmhKR2dWII1WMIxaUIRlHpiEJ5KETo2JidXV1OelLUQNCntpJI4rIZNpZ6YeFKhEL7BVKqCdndKKStibTcjJyfX19SsrK1NRSmJHJXNlHfdlQm0AAACAdFJOU/r////g/x7/Lp7///+p/1b/Jv9m//9Ugv+QBP8A//////8D//////7//w7///////////////8ItP/////8//8u///7Uf//0P8J/wn//f//////lP//////////cP///////1T//fj///z/////////////////vP///zRwU3b/10NyYQAAA8RJREFUeNpt1Pd72jgYB3AHspvO23eWZHliPDC2MXsT9ggJJCF7772aNh3/emVIcndtvz/4eYQ+aLySTdE0vb1NP2X0k/ipQn8Xima3v3zZHh20xj+fnMifKz+YitiSpfH+75XfU2Njk6WfGW/vH2n84eGh9kvqfLOcZH+Y6++PM8Oyx3MSP2tr5Q9bU87BsP97wxLTeuMMjGervlFFBbcjkwnTNPv2bc01q2LnjaHEZ2dnzxrWRr1n901GFEvkyfMvB8br2TJk7aydLzubPfm3F2RBhb1bMEy/puxq+SVLjaZNY2us3k1N5lHH2XCs3KqfzuSvBCBlqKqx3sqFqZJyTsjU5rkiinpnvePV0WkbXSUYgHjbWJ9fLoapYbXlnK87TgcDHLi7E4SALi3BQAASU3XmialRo3m+M0QiQAgDCUEYEm55ABmGQwikWsvLhyssRb8XdW+IdF1BJhQlSBAg4CAEwSBCwaC64tb5vcgxpGvEd0NMNJFICAkIAEBBEAhg5G6yb6AgJBifjwmRMOQPgaCioJ2AQEzc75q/GsQwzA0xg4QSgaB1yd8KZN1AjPTvRm0PQN9ziIkywZZ9mdKjHAeDfUOz+QsfdbgD3SxdU6FoCAbLzrHJMwAP4V13XzSrXdz8SeWazebaTnKVGAaSysgmzwF9fgjH/H0T9BWLS5Oe+yaI/ToSikJctmVTJ7tPLawvD0w7fpE7oD4sLlZ3wQ4TYjjeOrJ4jAExRmtgZmfEXeqeGI93hOwLckBRSK1JHc3uwtd/TZP33i8uzjcxhAhwpIYcXIsCRbatZ8NjTj+ozt/pABTzS+5ZuOMpinlpDszH0yQPOIKaI5gDxescOdO1NYgVyzJNqTTYu/YuibCu6xg/HjgTXYNAr9q2rPZr+FpLpzUVAcBjSAqLi2mJDMqBlOwYxitLipBx2lpaEwlBPNmujnmJiksol0NlZ2NhqmebKlnPu1lNBABjpJh86gin9tX0ajZ9iuSFzc1e3bBc006m44RwAKnKUde2j/clN/vdjXq93huYysRE/HCJjFPUFOvYMLrH+4qiqke2seDxGIO5aLqUnNnjMdJmGtOW/croymYspppfZTfWdDbsmtpKI51HhRrtj6NpScqpUsa/ElOn3aBS2L0/BEUikTlycTN59yLHkuRlrk00EOaf7mE/pTny8Ddw1H2v+t8EVgOkwaG5Z8O6oyRPDwMv9rIZuu/T15CKowL7bNyE5+I5kI8UHhuRJEhG/mDp/xkyYzabLTw1IqQx9/it+0/YcDj8k8Y3tysAfqlXfMkAAAAASUVORK5CYII=';
 
-  // Decodes bundled sprite bytes through the browser, without remote image requests.
-  function kjdMagmarCanvas() {
-    const canvas=document.createElement('canvas');
-    canvas.width=35; canvas.height=39;
-    canvas.style.cssText='width:29px;height:29px;object-fit:contain;image-rendering:pixelated;pointer-events:none';
-    const fallback=()=>{if(canvas.isConnected)canvas.replaceWith(document.createTextNode('🔥'))};
+  const KJD_MAGMAR_PIXELS={"w":35,"h":39,"c":"AAAAAEdHR1SfoZ4eKysrcBAIB/+Dg4MJ////A2JHJXZzcGwuU1FKU5KETv+Odij/jFsa/1NGMv5kWEZUakkZ/+3Vbv+mi1//W1tY0KlkJP/ryUj/796H//X19TTW1tYJNzc3ZuelLf/vyDH/kGcm/0tFRvy///8EyMnJ/6Wlpf9uYVTg2apI/3NnZf/V1dT/tLOz/1pYVv/Ym03/+NZn//DPPP/OmSz/jVYw/729vQ7lnij/89ZP/+i5M/+teCv/MBYP/5WUk1GtqqcuycnJCMO1riaXlZX/sGgd/8qnMf9NNxT/+Pr5/zc1NP1uWBr/qYoo/1MmEv+Mdm+pa1dU+1xQMv+plZL/aEpH+KhEL/9QGQ//sKahVqJtV/p3c3P/VUYX/7WXK/9UOC7/jish/9FHM//UiSj/czUY/42Jif/MOSf/rycW/9N0LP+LRhj/Sywp/ywjF/9wJRX/sDgm/7BVKv9pNi7/jiUW/8lZJP9rHBD/jFpQ/IyIhnCgnZ28yCsX/88yGv8yDQj/kzMk/5EbEf+mHhT/cSkj/6qmppB7aST/a2trtEQNCv+TaWf/mIQn/3VFKv2pf4D/kEcp/7MwGv8ZGRf/0opK/z8+Rf/SsjT/8KZR/4RlHv9zZR3/6Orp/7ylNP9nViD/Kygo/2xsbZ46NRv/dnd3lH6AfoI=","p":"AAAAAQEAAAAAAAAAAAACAwQDBQAAAAAAAAAAAAAAAAAAAAAABgEHBwECAAAAAAAACAkKCgsJBQAAAAAAAAAAAAAAAAAAAAAFBAwLDQgFAAAAAAUODxAQERIFAAAAAAAAAAAAAAAAAAAAAAUEExQVDQgWFhYXGA8ZGhscBgAAAAAAAAAAAAAAAAAAAAAdHh8gCyEhCiIjJCUbJicoKSogKwAAAAAAAAAAAAAAAAAAAAYeHyAMLCkKIiMkJRshJy0uLzAxAAAAADIyMwAABjQ0FwAABjUENiw3OCI5OTkjOjsuLRQ8MDEAAAAyBAQSAAAyPT0+AAAGNQQTISc3CyUjJD8bKRoUC0BBBgAAMUJDRCAARUY8Lxs+BgJHSDcnEC1JDxE/MDYpLik7SjUrADI/S0xEDTJGLzdNDEozEjgZJxAtKBoZOAQETjZNNhNOME8kMEtQUUQwPTw3TVJTVDMgVQwpGU0pKTZWRFZXWFhMTFdODVlaV1daRDA9LylSUlNUFwI/PTZbW1tbTFpaWldQTExbTEM9RFpRUVwwMEQPDFNTXV4GAF8EThNgTFtMS1pRYGFQTExMTFpEXFpaRGJiMDBiYlVeAAAAXwRcUVBMTGNkZVFgYWFQUFBMUFpEREQwYkRXV1YwQQYAAABfBFxaTExQUWRkUWBgYGBRUVBMV2I4ODBmV0xXVjAiKwAAAGc6XFpMUVFlZGRRUVFRUVFRYFBXYjtoPUNMV1pERARpAAAABhdCRFpkZGRkZGRkZGRkUVFgYVFiDDxoD05hXFxaYmkAAAAABj9qZEZdZlpaWlpaWWtGYGFgWmIbKWxIPVFEVltWbV4GAAAGJWplbkZKb29vcGYcNUZgYVFaPS8pC0g9XEROUltWcSsAAAYlYmRUVFkRIXJvRHFzY2BhWlYbPAtITkRiYg90TVNxKwAABiQiakoqRiZ1dS9tRGZRYFFcPTt2Oz1WVkRiD3Q3DHErAAAGOR8EbUZyJnV1IRNjUVFRWlxEODg9RFpaWkRISXR3cSsAAAY5HwRtbz0TcnV1Um9WWlowRFxERERcWnBhRDgLPDtxKwAABjkfBD1WXE4qL1JYTkREVD9ZRFxaWlFRWlw4OEhoSHErAAAGHk8cPURcXE4qb2NWXERUa0pEWlFwcFpWODs7SEgNEgYAAAYlJXgcMFZOTk5WVlpRUVwwMERRYXBaRE4vPDwLVWkAAABFJUdHJVUwREQ9VlpcXFpWVEcNRFxcXEQPCyk3N3k7DWkGACQlRyUEMEREMD09VlZOVj0NRiINMEpKMBspLnQoFDxIVSsAeDklBEREVlYwOEg9D3ZWD3pVRzV7R08wC3QaGhQtNztVKwAkHEciRFZWXEQwVTh2STw8bHoNDQ0NDXpJLi0tLRQ3O1UrAAV8fCJdWVZWMFQlODtsNzdJbHo4OFVVdjw3dCEhNzxIVSsAAAASHB9CPVYwJR86fTs8eTdJC0hxcVVIdwsLCwsLO317MwAAABdeOkc/MDEXACsiMH0NDUpVDTIrXnFVfX19fX0wEjMAAAAAABdpaWl+BgAAMj9EREQwcRwxAAAXfDowVj1ERARpAAAAAAAAAAASfgAAACs6VmFXWkQwMQAAAAAGJURhV1pcMH4AAAAAAAAAAAYGAAAyHE9dV0FCezIAAAAAKzpHa1pGIjAxBgAAAAAAAAAAAAAAADN+IkpEP2kxAAAAAAAzfmkcRBxpfwYAAAAAAAAAAAAAAAAAAAASe3t7MQAAAAAAAAAAaXt7e34AAAAAAAAAAAAAAAAAAAAAAAYzMzMAAAAAAAAAAAAGMzMzAAAAAAAA"};
+  function kjdPixelIcon(spec) {
     try {
-      const base64=KJD_MAGMAR_ICON.slice('data:image/png;base64,'.length);
-      const png=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
-      const ctx=canvas.getContext('2d');
-      if(!ctx)throw Error('Canvas indisponível');
-      const paint=bitmap=>{ctx.drawImage(bitmap,0,0);if(typeof bitmap.close==='function')bitmap.close()};
-      if(typeof createImageBitmap==='function')
-        createImageBitmap(new Blob([png],{type:'image/png'})).then(paint).catch(fallback);
-      else {
-        const img=new Image();
-        img.onload=()=>paint(img);
-        img.onerror=fallback;
-        img.src=KJD_MAGMAR_ICON;
-      }
-    } catch(error) { console.warn('[Moon Dock] Magmar não pôde ser desenhado',error); fallback(); }
-    return canvas;
+      const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+      if(!ctx) throw Error('Canvas indisponível');
+      canvas.width=spec.w;canvas.height=spec.h;
+      canvas.style.cssText='width:29px;height:29px;object-fit:contain;image-rendering:pixelated;pointer-events:none';
+      const palette=atob(spec.c),indexes=atob(spec.p),frame=ctx.createImageData(spec.w,spec.h);
+      if(indexes.length!==spec.w*spec.h)throw Error('Ícone incompleto');
+      for(let i=0;i<indexes.length;i++){const k=indexes.charCodeAt(i)*4;for(let j=0;j<4;j++)frame.data[i*4+j]=palette.charCodeAt(k+j)}
+      ctx.putImageData(frame,0,0);return canvas;
+    } catch(e){console.warn('[Moon Dock] ícone indisponível',e);return null}
   }
-  function addMoonDockButton(id,label,image,pane) {
-    let dock=document.getElementById('kjd-moon-dock');
-    if(!dock){
-      const css=document.createElement('style');
-      css.textContent='#kjd-moon-dock{position:fixed;left:8px;top:50%;transform:translateY(-50%);z-index:2147483646;display:flex;flex-direction:column;gap:6px;padding:7px 5px;border:2px solid #785a28;border-radius:10px;background:#14100add;backdrop-filter:blur(4px)}#kjd-moon-dock button{width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:2px;border:1px solid transparent;border-radius:8px;background:transparent;cursor:pointer;font:23px system-ui;color:#ffe2a0}#kjd-moon-dock button:hover{background:#ffffff22}#kjd-moon-dock button.active{background:#d5aa4533;border-color:#d5aa45}#kjd-moon-dock img{width:29px;height:29px;image-rendering:pixelated;object-fit:contain;pointer-events:none}#kim-pm-panel[hidden],#kjd-autorefill[hidden],#ipm-rota-best[hidden]{display:none!important}';
-      document.head.appendChild(css);
-      dock=document.createElement('nav');dock.id='kjd-moon-dock';dock.setAttribute('aria-label','Automações Poke Moon');document.body.appendChild(dock);
+  function kjdMagmarCanvas() { return kjdPixelIcon(KJD_MAGMAR_PIXELS); }
+  // BEGIN SHARED MOON DOCK — embedded in each standalone userscript.
+  function moonDock() {
+    if (window.__kjdMoonDockV2) return window.__kjdMoonDockV2;
+    const entries = new Map();
+    let dock = document.getElementById('kjd-moon-dock');
+    if (!dock) {
+      dock = document.createElement('nav'); dock.id = 'kjd-moon-dock';
+      dock.setAttribute('aria-label', 'Automações Poke Moon'); document.body.appendChild(dock);
     }
-    const button=document.createElement('button');button.type='button';button.title=label;button.setAttribute('aria-label',label);
-    if(image && image.tagName==='CANVAS')button.appendChild(image);else button.textContent='🔥';
-    pane.hidden=true;pane.dataset.kjdPanel=id;
-    button.onclick=()=>{const opening=pane.hidden;document.querySelectorAll('[data-kjd-panel]').forEach(p=>{p.hidden=true});dock.querySelectorAll('button').forEach(b=>b.classList.remove('active'));pane.hidden=!opening;button.classList.toggle('active',opening)};
-    dock.appendChild(button);
+    if (!document.getElementById('kjd-moon-dock-style')) {
+      const css = document.createElement('style'); css.id = 'kjd-moon-dock-style';
+      css.textContent = '#kjd-moon-dock{position:fixed;left:8px;top:50%;transform:translateY(-50%);z-index:2147483646;display:flex;flex-direction:column;gap:6px;padding:7px 5px;border:2px solid #785a28;border-radius:10px;background:#14100add;backdrop-filter:blur(4px);max-height:calc(100vh - 16px);overflow-y:auto;box-sizing:border-box}#kjd-moon-dock button{width:36px;height:36px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:2px;border:1px solid transparent;border-radius:8px;background:transparent;cursor:pointer;font:23px system-ui;color:#ffe2a0}#kjd-moon-dock button:hover{background:#ffffff22}#kjd-moon-dock button.active{background:#d5aa4533;border-color:#d5aa45}#kjd-moon-dock canvas{width:29px;height:29px;object-fit:contain;image-rendering:pixelated;pointer-events:none}[data-kjd-panel]{box-sizing:border-box!important;max-width:calc(100vw - 16px)!important;max-height:calc(100vh - 16px)!important;overflow-y:auto!important}[data-kjd-panel][hidden]{display:none!important}#ipm-rota-best input{box-sizing:border-box;min-width:0}#ipm-rota-best label{min-width:0}';
+      (document.head || document.documentElement).appendChild(css);
+    }
+    function clamp(pane, x, y) {
+      if (pane.hidden) return;
+      const rect = pane.getBoundingClientRect();
+      pane.style.left = Math.max(8, Math.min(Number.isFinite(x) ? x : rect.left, innerWidth - rect.width - 8)) + 'px';
+      pane.style.top = Math.max(8, Math.min(Number.isFinite(y) ? y : rect.top, innerHeight - rect.height - 8)) + 'px';
+      pane.style.right = 'auto';
+    }
+    function sync() {
+      for (const { pane, button } of entries.values()) {
+        button.classList.toggle('active', !pane.hidden);
+        button.setAttribute('aria-expanded', String(!pane.hidden));
+      }
+    }
+    function register(id, label, image, pane) {
+      let entry = entries.get(id);
+      if (entry && entry.pane === pane) return entry.button;
+      if (entry) { entry.observer.disconnect(); entry.button.remove(); }
+      const button = document.createElement('button');
+      button.type = 'button'; button.title = label; button.dataset.kjdButton = id;
+      button.setAttribute('aria-label', label); button.setAttribute('aria-controls', pane.id);
+      if (image && image.tagName === 'CANVAS') button.appendChild(image); else button.textContent = '🌙';
+      pane.hidden = true; pane.dataset.kjdPanel = id;
+      button.onclick = () => {
+        const opening = pane.hidden;
+        document.querySelectorAll('[data-kjd-panel]').forEach(p => { p.hidden = true; });
+        pane.hidden = !opening;
+        if (opening) clamp(pane);
+        sync();
+      };
+      const observer = new MutationObserver(sync); observer.observe(pane, { attributes: true, attributeFilter: ['hidden'] });
+      entries.set(id, { pane, button, observer }); dock.appendChild(button); sync();
+      for (const key of ['autocatch', 'autorefill', 'bestiario']) { const item = entries.get(key); if (item) dock.appendChild(item.button); }
+      return button;
+    }
+    function drag(pane, handle, options = {}) {
+      let active = null;
+      const save = () => {
+        const rect = pane.getBoundingClientRect(), position = { x: rect.left, y: rect.top };
+        if (options.storageKey) { try { localStorage.setItem(options.storageKey, JSON.stringify(position)); } catch (_) {} }
+        if (options.onSave) options.onSave(position);
+      };
+      let position = options.position;
+      if (options.storageKey) { try { position = JSON.parse(localStorage.getItem(options.storageKey)); } catch (_) {} }
+      if (position && Number.isFinite(position.x) && Number.isFinite(position.y)) {
+        pane.style.left = position.x + 'px'; pane.style.top = position.y + 'px'; pane.style.right = 'auto';
+      }
+      handle.style.touchAction = 'none';
+      handle.addEventListener('pointerdown', e => {
+        if (e.button !== 0 || e.target.closest('button, input, select, a')) return;
+        const rect = pane.getBoundingClientRect(); active = { id: e.pointerId, dx: e.clientX - rect.left, dy: e.clientY - rect.top };
+        handle.setPointerCapture(e.pointerId); e.preventDefault();
+      });
+      handle.addEventListener('pointermove', e => { if (active && active.id === e.pointerId) clamp(pane, e.clientX - active.dx, e.clientY - active.dy); });
+      const stop = e => { if (!active || active.id !== e.pointerId) return; active = null; clamp(pane); save(); };
+      handle.addEventListener('pointerup', stop); handle.addEventListener('pointercancel', stop); handle.addEventListener('lostpointercapture', stop);
+    }
+    window.addEventListener('resize', () => { for (const { pane } of entries.values()) clamp(pane); });
+    window.__kjdMoonDockV2 = { register, drag, clamp, sync };
+    return window.__kjdMoonDockV2;
   }
+  function addMoonDockButton(id, label, image, pane) { return moonDock().register(id, label, image, pane); }
+  // END SHARED MOON DOCK
   const panel = document.createElement('section');
   panel.id = 'ipm-rota-best';
   panel.style.cssText = "position:fixed;right:16px;top:110px;z-index:99999;width:340px;max-width:90vw;padding:14px;border:1px solid #6d80bb66;border-radius:16px;background:linear-gradient(160deg,#1e2b62f5,#0c1230f8);color:#eef3ff;font:13px/1.45 system-ui;box-shadow:0 12px 36px #0009";
-  panel.innerHTML = "<div data-handle style=\"cursor:move;display:flex;gap:10px;align-items:center;border-bottom:1px solid #8c9dd333;padding-bottom:11px;user-select:none\"><span style=\"font-size:25px\">🏆</span><div><strong style=\"letter-spacing:3px;color:#f5d67b;font-size:17px\">PAINEL</strong><div style=\"font-size:11px;color:#9cadde\">Rota do Bestiário 1.0.3 · arraste para mover</div></div></div><div style=\"font-size:10px;letter-spacing:2px;color:#b1c1ef;margin:15px 0 8px\">RESUMO DA ROTA</div><div style=\"display:flex;gap:8px\"><div style=\"flex:1;border:1px solid #8c9dd333;border-radius:10px;padding:10px\"><small>Concluídas</small><div data-counter style=\"font-weight:800;font-size:23px;color:#f5d67b\">0</div></div><div style=\"flex:1;border:1px solid #8c9dd333;border-radius:10px;padding:10px\"><small>Status</small><div data-mode style=\"font-weight:800;font-size:21px\">Pronto</div></div></div><div style=\"font-size:10px;letter-spacing:2px;color:#b1c1ef;margin:15px 0 8px\">CONFIGURAÇÕES</div><div style=\"display:flex;gap:8px\"><label style=\"flex:1\">Minutos por hunt<input data-min type=\"number\" min=\"1\" max=\"1440\" value=\"10\" style=\"width:100%;padding:7px;background:#0c1437;color:white;border:1px solid #7186b777;border-radius:7px\"></label><label style=\"flex:1\">Bolas por hunt<input data-balls type=\"number\" min=\"1\" max=\"1000\" value=\"60\" style=\"width:100%;padding:7px;background:#0c1437;color:white;border:1px solid #7186b777;border-radius:7px\"></label></div><div style=\"display:flex;gap:8px;margin-top:14px\"><button data-start style=\"flex:1;background:#376cdd;color:white;border:0;padding:10px;border-radius:9px;cursor:pointer\">▶ Iniciar / retomar</button><button data-stop style=\"flex:1;background:#8a3653;color:white;border:0;padding:10px;border-radius:9px;cursor:pointer\">Ⅱ Pausar</button></div><div data-status role=\"status\" style=\"white-space:pre-wrap;margin-top:12px;padding:10px;border-radius:10px;border:1px solid #8c9dd333\">Pronto. Nenhuma ação iniciada.</div><small style=\"display:block;margin-top:10px;color:#abbbe5\">Captura uma espécie normal por vez. Pausar mantém Auto-Catch e combate.</small>";
+  panel.innerHTML = "<div data-handle style=\"cursor:move;display:flex;gap:10px;align-items:center;border-bottom:1px solid #8c9dd333;padding-bottom:11px;user-select:none\"><span style=\"font-size:25px\">🏆</span><div><strong style=\"letter-spacing:3px;color:#f5d67b;font-size:17px\">PAINEL</strong><div style=\"font-size:11px;color:#9cadde\">Rota do Bestiário 1.0.7 · arraste para mover</div></div></div><div style=\"font-size:10px;letter-spacing:2px;color:#b1c1ef;margin:15px 0 8px\">RESUMO DA ROTA</div><div style=\"display:flex;gap:8px\"><div style=\"flex:1;border:1px solid #8c9dd333;border-radius:10px;padding:10px\"><small>Concluídas</small><div data-counter style=\"font-weight:800;font-size:23px;color:#f5d67b\">0</div></div><div style=\"flex:1;border:1px solid #8c9dd333;border-radius:10px;padding:10px\"><small>Status</small><div data-mode style=\"font-weight:800;font-size:21px\">Pronto</div></div></div><div style=\"font-size:10px;letter-spacing:2px;color:#b1c1ef;margin:15px 0 8px\">CONFIGURAÇÕES</div><div style=\"display:flex;gap:8px\"><label style=\"flex:1\">Minutos por hunt<input data-min type=\"number\" min=\"1\" max=\"1440\" value=\"10\" style=\"width:100%;padding:7px;background:#0c1437;color:white;border:1px solid #7186b777;border-radius:7px\"></label><label style=\"flex:1\">Bolas por hunt<input data-balls type=\"number\" min=\"1\" max=\"1000\" value=\"60\" style=\"width:100%;padding:7px;background:#0c1437;color:white;border:1px solid #7186b777;border-radius:7px\"></label></div><div style=\"display:flex;gap:8px;margin-top:14px\"><button data-start style=\"flex:1;background:#376cdd;color:white;border:0;padding:10px;border-radius:9px;cursor:pointer\">▶ Iniciar / retomar</button><button data-stop style=\"flex:1;background:#8a3653;color:white;border:0;padding:10px;border-radius:9px;cursor:pointer\">Ⅱ Pausar</button></div><div data-status role=\"status\" style=\"white-space:pre-wrap;margin-top:12px;padding:10px;border-radius:10px;border:1px solid #8c9dd333\">Pronto. Nenhuma ação iniciada.</div><small style=\"display:block;margin-top:10px;color:#abbbe5\">Captura uma espécie normal por vez. Pausar mantém Auto-Catch e combate.</small>";
   panel.style.maxHeight='calc(100vh - 24px)';panel.style.overflowY='auto';
   document.body.appendChild(panel);
   addMoonDockButton('bestiario','Rota do Bestiário - Magmar',kjdMagmarCanvas(),panel);
@@ -75,13 +127,7 @@
   close.style.cssText='position:absolute;top:8px;right:8px;background:#253968;color:white;border:1px solid #7282ac;border-radius:6px;padding:2px 8px;cursor:pointer;z-index:2';
   close.onclick=()=>{panel.hidden=true;document.querySelectorAll('#kjd-moon-dock button').forEach(b=>b.classList.remove('active'))};
   panel.appendChild(close);
-  const posKey='ipm-rota-bestiario-pos-v103';
-  const handle=panel.querySelector('[data-handle]');let drag=null;
-  const move=(x,y)=>{panel.style.left=Math.max(0,Math.min(x,innerWidth-Math.max(panel.offsetWidth,Math.min(340,innerWidth*0.9))))+'px';panel.style.top=Math.max(0,Math.min(y,innerHeight-60))+'px';panel.style.right='auto';};
-  try{const p=JSON.parse(localStorage.getItem(posKey));if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y))move(p.x,p.y)}catch{}
-  handle.addEventListener('pointerdown',e=>{if(e.button!==0)return;const r=panel.getBoundingClientRect();drag={id:e.pointerId,dx:e.clientX-r.left,dy:e.clientY-r.top};handle.setPointerCapture(e.pointerId);e.preventDefault()});
-  handle.addEventListener('pointermove',e=>{if(drag&&drag.id===e.pointerId)move(e.clientX-drag.dx,e.clientY-drag.dy)});
-  handle.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;drag=null;const r=panel.getBoundingClientRect();try{localStorage.setItem(posKey,JSON.stringify({x:r.left,y:r.top}))}catch{}});
+  moonDock().drag(panel, panel.querySelector('[data-handle]'), { storageKey: 'ipm-rota-bestiario-pos-v103' });
   const status = panel.querySelector('[data-status]');
   const startButton = panel.querySelector('[data-start]');
   function say(message) { status.textContent = message;panel.querySelector('[data-counter]').textContent=completed.size;panel.querySelector('[data-mode]').textContent=running?'Ativa':'Pausada'; }

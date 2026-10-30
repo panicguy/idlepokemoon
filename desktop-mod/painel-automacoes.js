@@ -5,7 +5,7 @@
   const render = () => { if (window.PAINEL?.aba === 'ajustes') window.PAINEL.render(); };
   async function request(p) {
     busy = true; message = ''; render();
-    try { const r = await window.app.automacoes(p); if (!r.ok) message = r.error; else { scripts = r.scripts; if (p.type === 'install') { draft = ''; message = 'Instalado. Escolha as contas e ative o script.'; } } }
+    try { const r = await window.app.automacoes(p); if (!r.ok) message = r.error; else { scripts = r.scripts; message = r.message || ''; if (p.type === 'install') { draft = ''; message = 'Instalado. Escolha as contas e ative o script.'; } } }
     catch (_) { message = 'Não foi possível completar o pedido.'; }
     busy = false; render();
   }
@@ -17,7 +17,7 @@
       h('div.n', h('b', 'Scripts do GitHub'), h('em', 'Cole o link de um .js ou .user.js. Instale apenas scripts em que você confia: eles podem agir nas contas selecionadas.')),
       input, h('button.btn-g', { disabled: busy, onclick: () => request({ type: 'install', url: draft.trim() }) }, busy ? 'Aguarde…' : 'Instalar script'),
       message ? h('p', { role: 'status' }, message) : null,
-      h('p.dim.pequeno', 'Ativar, desativar ou trocar contas recarrega as contas afetadas. Scripts ficam salvos; novas versões são instaladas manualmente.'));
+      h('p.dim.pequeno', 'Ativar, desativar, trocar contas ou atualizar um script ligado recarrega as contas afetadas. Atualizar mantém as configurações.'));
     for (const s of scripts || []) {
       box.append(h('div.auto-script',
         h('b', s.name + (s.version ? ' · ' + s.version : '')),
@@ -26,9 +26,11 @@
         h('div.visao', [true, false].map(on => h('button' + (s.enabled === on ? '.on' : ''), { disabled: busy, onclick: () => request({ type: 'toggle', id: s.id, enabled: on }) }, on ? 'Ligado' : 'Desligado'))),
         h('div.visao', [0, 1, 2].map(i => h('button' + (s.accounts.includes(i) ? '.on' : ''), { disabled: busy, onclick: () => request({ type: 'accounts', id: s.id, accounts: s.accounts.includes(i) ? s.accounts.filter(n => n !== i) : [...s.accounts, i] }) }, window.PAINEL.nomeConta(i)))),
         s.error ? h('p', s.error) : null,
+        h('button', { disabled: busy, onclick: () => request({ type: 'update', id: s.id }) }, 'Atualizar do GitHub'),
         h('button', { disabled: busy, onclick: () => request({ type: 'remove', id: s.id }) }, 'Remover')));
     }
     if (scripts && !scripts.length) box.append(h('p.dim', 'Nenhuma automação instalada.'));
     return box;
   };
 })();
+

@@ -37,10 +37,10 @@ replace('src/ui/painel.html', '<script src="painel-ajustes.js"></script>', '<scr
 replace('src/ui/painel-ajustes.js', "    raiz.append(sec('🎛️ Desempenho'), blocoPerfis(S));", "    raiz.append(sec('🤖 Automações'), window.blocoAutomacoes());\n    raiz.append(sec('🎛️ Desempenho'), blocoPerfis(S));");
 changes.set('src/ui/painel.css', read('src/ui/painel.css') + '\n.automacoes input{width:100%;box-sizing:border-box;margin:12px 0;padding:10px;border:1px solid #675a92;border-radius:8px;background:#11152b;color:#eee}.automacoes .n em{display:block;margin-top:6px}.auto-script{border-top:1px solid #45405d;margin-top:16px;padding-top:14px;display:grid;gap:10px}.auto-url{overflow-wrap:anywhere;opacity:.65}.automacoes p{line-height:1.5}\n');
 const manager = require('./automacoes');
-const presets = ['PokeMoon-AutoCatch-KimJongDudu.user.js', 'PokeMoon-AutoRefill-KimJongDudu.user.js'].map(file => {
+const presets = ['PokeMoon-AutoCatch-KimJongDudu.user.js', 'PokeMoon-AutoRefill-KimJongDudu.user.js', 'PokeMoon-Rota-Bestiario-KimJongDudu.user.js'].map(file => {
   const code = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
   const meta = manager.metadata(code);
-  return { name: meta.name[0], url: 'https://raw.githubusercontent.com/panicguy/idlepokemoon/main/' + file, code, meta, cardSupport: meta['idlemoon-card'][0], dependencies: '' };
+  return { name: meta.name[0], url: 'https://raw.githubusercontent.com/panicguy/idlepokemoon/main/' + file, code, meta, cardSupport: (meta['idlemoon-card'] || [])[0], dependencies: '' };
 });
 changes.set('automation-presets.json', JSON.stringify(presets, null, 2));
 changes.set('src/main/automacoes.js', fs.readFileSync(path.join(__dirname, 'automacoes.js'), 'utf8'));
@@ -83,5 +83,6 @@ fs.writeFileSync(path.join(out, 'resources', 'app.asar'), newArchive);
 fs.writeFileSync(path.join(out, 'Idle Poke Moon.exe'), exe);
 fs.copyFileSync(path.join(__dirname, 'COMO-USAR.txt'), path.join(out, 'LEIA-ME.txt'));
 const hashes = { 'Idle Poke Moon.exe': sha(exe), 'resources/app.asar': sha(newArchive) };
-fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify({ version: '0.4.0-mod1', base: '0.4.0', hashes, cleanProfile: true }, null, 2));
+fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify({ version: '0.4.0-mod2', base: '0.4.0', hashes, cleanProfile: true }, null, 2));
 console.log(JSON.stringify({ output: out, hashes, scripts: presets.map(s => s.name) }));
+

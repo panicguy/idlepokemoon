@@ -1,14 +1,15 @@
-IDLE POKE MOON - MOD DE AUTOMACOES 0.4.0-mod1
+IDLE POKE MOON - MOD DE AUTOMACOES 0.4.0-mod2
 Mod nao oficial para Windows x64, por KimJongDudu.
 
 1. Extraia o ZIP inteiro para uma pasta nova. Nao abra o exe dentro do ZIP.
 2. Feche outra instancia do Idle Poke Moon e abra "Idle Poke Moon.exe".
 3. Entre com a sua propria conta.
-4. Abra Ajustes > Automacoes. AutoCatch e AutoRefill ja estao disponiveis e
+4. Abra Ajustes > Automacoes. AutoCatch, AutoRefill e Bestiario ja estao disponiveis e
    inicialmente desligados em uma instalacao nova. Selecione as contas e ligue.
-5. Configure o AutoCatch em Mochila > AutoCatch. Configure os itens, minimos,
+5. Abra os paineis pelos icones do dock lateral. Configure os itens, minimos,
    alvos e limite de gastos no painel do AutoRefill dentro do jogo.
-6. Depois de ligar cada automacao no proprio painel, voce pode mudar para Card.
+6. Depois de ligar Catch e Refill no proprio painel, voce pode mudar para Card.
+   A Rota do Bestiario continua dependendo da tela completa do jogo.
    O Card mostra o estado e os contadores. As configuracoes sao mantidas ao voltar.
 
 O ZIP nao contem login, senha, sessao, configuracoes ou registros do criador.
@@ -16,8 +17,8 @@ Os dados criados em seu PC ficam na pasta IdlePokeMoon de APPDATA, a mesma usada
 pelo aplicativo oficial. Nao execute o oficial e o mod ao mesmo tempo.
 
 Se voce ja tinha automacoes instaladas, os dados existentes sao preservados.
-Para usar os scripts atualizados, remova apenas a versao antiga em Ajustes e
-instale novamente pelos links do repositorio:
+Use Atualizar do GitHub em Ajustes > Automacoes para atualizar cada script.
+A atualizacao preserva ativacao, contas e configuracoes. Repositorio:
 https://github.com/panicguy/idlepokemoon
 
 AutoRefill mantem ligado/desligado apos recarregar e desliga em erros de operacao.
@@ -31,3 +32,4 @@ uma versao nova, sera necessario atualizar a base do mod.
 
 Suporte, codigo e downloads:
 https://github.com/panicguy/idlepokemoon/releases
+

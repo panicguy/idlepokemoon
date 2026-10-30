@@ -126,6 +126,16 @@ function create({ file, views, origin, count = 3, fetchScript = download, preset
   }
   const list = () => scripts.map(({ code, dependencies, meta, ...s }) => ({ ...s, version: (meta.version || [''])[0], error: errors.get(s.id) || '' }));
   function save() { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file + '.tmp', JSON.stringify(scripts, null, 2)); fs.renameSync(file + '.tmp', file); }
+  async function prepare(url) {
+    const code = await fetchScript(url), meta = metadata(code), deps = [];
+    for (const link of meta.require || []) {
+      if (deps.length >= 8) throw Error('Limite de 8 dependências.');
+      const dep = await fetchScript(githubUrl(link)); new vm.Script(dep); deps.push(dep);
+    }
+    const capability = (meta['idlemoon-card'] || [])[0];
+    return { name: (meta.name || [new URL(url).pathname.split('/').pop()])[0], url, code, meta,
+      dependencies: deps.join('\n;\n'), cardSupport: ['autorefill-v1', 'autocatch-v1'].includes(capability) ? capability : undefined };
+  }
   function reload(accounts) { for (const i of accounts) { const wc = views()[i]?.webContents; if (wc && !wc.isDestroyed()) { try { if (new URL(wc.getURL()).origin === origin) wc.reload(); } catch (_) {} } } }
   async function inject(wc, i, phase) {
     const url = wc.getURL();
@@ -150,12 +160,16 @@ function create({ file, views, origin, count = 3, fetchScript = download, preset
       if (p.type === 'install') {
         if (scripts.length >= 30) throw Error('Limite de 30 scripts.');
         const url = githubUrl(p.url); if (scripts.some(s => s.url === url)) throw Error('Este script já está instalado.');
-        const code = await fetchScript(url), meta = metadata(code);
-        const deps = [];
-        for (const link of meta.require || []) { if (deps.length >= 8) throw Error('Limite de 8 dependências.'); const dep = await fetchScript(githubUrl(link)); new vm.Script(dep); deps.push(dep); }
-        const capability = (meta['idlemoon-card'] || [])[0];
-        const cardSupport = ['autorefill-v1', 'autocatch-v1'].includes(capability) ? capability : undefined;
-        scripts.push({ id: crypto.randomUUID(), name: (meta.name || [new URL(url).pathname.split('/').pop()])[0], url, code, meta, cardSupport, dependencies: deps.join('\n;\n'), enabled: false, accounts: Array.from({ length: count }, (_, i) => i) }); save();
+        scripts.push({ ...await prepare(url), id: crypto.randomUUID(), enabled: false, accounts: Array.from({ length: count }, (_, i) => i) }); save();
+      } else if (p.type === 'update') {
+        const s = scripts.find(s => s.id === p.id); if (!s) throw Error('Script não encontrado.');
+        const prepared = await prepare(githubUrl(s.url));
+        if (prepared.code === s.code && prepared.dependencies === s.dependencies) return { ok: true, scripts: list(), message: 'O script já está atualizado.' };
+        const oldVersion = (s.meta.version || ['sem versão'])[0];
+        Object.assign(s, prepared); save(); errors.delete(s.id);
+        // ID, activation and account selection stay stable; scripts keep their own storage keys.
+        if (s.enabled) reload(s.accounts);
+        return { ok: true, scripts: list(), message: 'Atualizado: ' + oldVersion + ' → ' + (s.meta.version || ['sem versão'])[0] + '. Configurações preservadas.' };
       } else if (p.type === 'toggle' || p.type === 'remove' || p.type === 'accounts') {
         const s = scripts.find(s => s.id === p.id); if (!s) throw Error('Script não encontrado.');
         const affected = [...s.accounts];
@@ -181,3 +195,4 @@ function create({ file, views, origin, count = 3, fetchScript = download, preset
   return { inject, tickCard, request: p => { const result = queue.then(() => request(p)); queue = result.catch(() => {}); return result; } };
 }
 module.exports = { create, githubUrl, metadata, matches, runtime, cardBridge };
+

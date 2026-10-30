@@ -1,0 +1,9 @@
+node_modules/
+desktop-mod/ui-evidence/
+desktop-mod/update-test-*/
+desktop-mod/idlemoon-test-*/
+out/
+dist/
+base-app/
+base-unpack/
+base-installer.exe

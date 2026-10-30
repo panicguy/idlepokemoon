@@ -1,0 +1,39 @@
+# Revisão de integração — 30/10/2026
+
+Versões: AutoCatch **1.5.2**, AutoRefill **1.2.2**, Rota do Bestiário **1.0.7**.
+
+## Alterações
+
+- Dock compartilhado e idempotente: um contêiner, uma folha de estilo, um botão por script, ordem consistente e no máximo um painel aberto. Fechar um painel sincroniza o destaque e `aria-expanded` sem alterar a ativação da automação.
+- Fonte comum em `moon-dock.js`, incorporada em cada userscript por `node desktop-mod/embed-dock.cjs`. Não existe dependência externa em tempo de execução: qualquer script pode ser instalado sozinho.
+- Os três ícones são pixels incorporados desenhados com `putImageData`. O Magmar mantém o sprite original, sem `Image`, Blob ou decodificação de PNG no cliente.
+- Arraste com Pointer Events, cancelamento e captura do ponteiro; ajustes ao abrir/redimensionar mantêm o painel dentro da janela. Chaves existentes de posição do Refill e do Bestiário foram preservadas; o Catch ganhou uma chave separada para posição.
+- Atualização individual no Hub por `Atualizar do GitHub`: valida o código e dependências antes de salvar, mantém ID, ativação e seleção de contas, e recarrega somente as contas afetadas quando há alteração em um script ligado. Sem mudança de código, não recarrega. Falhas preservam a versão instalada.
+- A montagem do próximo desktop inclui os três scripts; apenas Catch e Refill declaram suporte ao Card. A navegação do Bestiário continua na tela completa.
+
+## Validação
+
+Executado no runtime oficial **Electron 44.6.0**, em um perfil de teste separado, com sandbox e isolamento de contexto ligados. A fixture bloqueia recursos externos e não contém dados de conta.
+
+- Seis permutações da ordem de carregamento e repetição dos scripts: um dock, três botões, três painéis.
+- Pixels não transparentes nos três Canvas; nenhuma solicitação de recurso externo.
+- Painéis inicialmente ocultos; abertura exclusiva, fechamento e destaque sincronizados.
+- Conteúdo mantido dentro da janela ao abrir posições antigas fora da tela e ao reduzir a janela para 420 × 340.
+- Configurações de Catch e Refill iguais antes/depois das ações de interface; nenhuma ação ou consulta ao jogo.
+- Testes de Card existentes passam: filtro de shinies, intervalo, bola selecionada, prevenção de sobreposição, cooldown do Refill, persistência e reutilização de sessão.
+- Testes de atualização passam: identidade/contas preservadas e rollback em falha de rede, sintaxe ou permissões GM não suportadas.
+
+Os testes não iniciam a Rota nem compram, vendem ou lançam bolas em contas reais. A lógica dessas ações não foi reescrita. Evidência visual é produzida localmente em `desktop-mod/ui-evidence/`.
+
+## Executar
+
+```powershell
+node desktop-mod/test-automacoes.cjs
+node desktop-mod/test-refill-card.cjs
+node desktop-mod/test-autocatch-card.cjs
+node desktop-mod/test-script-update.cjs
+# Use o runtime oficial do Electron 44.6.0:
+electron desktop-mod/test-ui-electron.cjs
+```
+
+O botão de atualização faz parte do código do próximo Hub: não é inserido em executáveis antigos apenas por atualizar os userscripts. Na versão desktop mod1 já distribuída, ainda é necessário reinstalar o script pela mesma URL para receber o código mais recente. Os scripts usam as mesmas chaves de configuração.
