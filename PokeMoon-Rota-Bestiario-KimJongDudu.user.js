@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Rota do Bestiário
 // @namespace    local.pokemoon.bestiario
-// @version      1.0.7
+// @version      1.1.0
 // @description  Visita hunts liberadas e captura uma espécie normal faltante por vez.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -113,24 +113,46 @@
     window.__kjdMoonDockV2 = { register, drag, clamp, sync };
     return window.__kjdMoonDockV2;
   }
+  function moonPanelTheme() {
+    if (document.getElementById('kjd-moon-panel-theme')) return;
+    const css = document.createElement('style'); css.id = 'kjd-moon-panel-theme';
+    css.textContent = `
+      .moon-panel{position:fixed;top:145px;right:28px;z-index:99000;width:292px;box-sizing:border-box;overflow:hidden;background:linear-gradient(145deg,#182238,#101724 55%,#0b111e);border:1px solid #816e43;border-radius:10px;color:#e8edf6;font:12px/1.35 system-ui,"Segoe UI",sans-serif;box-shadow:0 2px 0 #3a3223 inset,0 12px 38px #000b}
+      .moon-panel *{box-sizing:border-box}.moon-panel button{font:inherit;font-weight:750;cursor:pointer}.moon-panel .moon-head{display:flex;align-items:center;gap:8px;padding:8px 10px;background:linear-gradient(#303342,#222838);border-bottom:1px solid #685936;cursor:move;user-select:none;touch-action:none}.moon-panel .moon-head canvas{width:22px!important;height:22px!important;object-fit:contain;image-rendering:pixelated;flex-shrink:0}.moon-panel .moon-title{font-size:12px;font-weight:850;color:#f4e4b8;letter-spacing:.2px;flex:1;min-width:0}.moon-panel .moon-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#64748b;margin-left:5px}.moon-panel.moon-active .moon-dot{background:#4cda93;box-shadow:0 0 6px #4cda93}.moon-panel .moon-head button{background:#111827;border:1px solid #4d556b;color:#e8edf6;border-radius:5px;min-width:23px;width:23px;height:23px;padding:0;font-size:16px;flex-shrink:0}.moon-panel .moon-head button:hover{background:#263349}
+      .moon-panel .moon-body{padding:11px}.moon-panel.moon-collapsed .moon-body{display:none}.moon-panel .moon-state{padding:7px 9px;border:1px solid #31445c;background:#101c2a;border-radius:7px;color:#aebdd1;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px}.moon-panel.moon-active .moon-state{border-color:#326950;color:#8becbb}.moon-panel .moon-metrics{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:9px 0}.moon-panel .moon-metric{padding:9px;border:1px solid #303c50;border-radius:7px;background:#101a2b;min-width:0}.moon-panel .moon-metric small{display:block;color:#8898ae;font-size:10px}.moon-panel .moon-metric strong{display:block;color:#ffdb78;font-size:19px;line-height:1.4;font-variant-numeric:tabular-nums}.moon-panel .moon-metric .moon-value-text{font-size:12px;line-height:1.5;padding-top:4px;overflow-wrap:anywhere}
+      .moon-panel .moon-line{display:flex;justify-content:space-between;align-items:center;gap:7px;padding:7px 1px;border-top:1px solid #293346;color:#d2deed}.moon-panel input[type=number]{padding:5px;border:1px solid #485b77;border-radius:5px;color:#f7e9c8;background:#0d1727;outline:none;font:inherit}.moon-panel input[type=number]:focus{border-color:#d2ae5a;box-shadow:0 0 0 1px #d2ae5a55}.moon-panel .moon-line input[type=number]{width:84px;min-width:0}.moon-panel input[type=checkbox]{accent-color:#d2ae5a;width:16px;height:16px;flex-shrink:0}.moon-panel .moon-go,.moon-panel .moon-stop{width:100%;margin-top:9px;color:#eafff1;border:1px solid #59ad7c;border-radius:7px;padding:10px 8px;background:linear-gradient(#3a785b,#20593c)}.moon-panel .moon-go.active,.moon-panel .moon-stop{background:linear-gradient(#7a4549,#5b282f);border-color:#b76369;color:#ffe1e1}.moon-panel .moon-go:hover{filter:brightness(1.1)}.moon-panel button:disabled{opacity:.5;cursor:default}.moon-panel .moon-foot{font-size:10px;line-height:1.4;margin-top:8px;color:#8190a5;text-align:center}.moon-panel .moon-note{font-size:11px;line-height:1.5;margin:9px 0;color:#aebdd1}.moon-panel .moon-section{color:#f4e4b8;font-size:10px;font-weight:750;letter-spacing:.08em;margin:12px 0 5px}.moon-panel .moon-detail{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:9px;padding:8px 9px;border:1px solid #31445c;border-radius:7px;background:#101c2a;color:#aebdd1;font-size:11px}
+      .moon-panel,.moon-panel *{scrollbar-width:thin;scrollbar-color:#485b77 #101724}.moon-panel::-webkit-scrollbar,.moon-panel ::-webkit-scrollbar{width:6px;height:6px}.moon-panel::-webkit-scrollbar-thumb,.moon-panel ::-webkit-scrollbar-thumb{background:#485b77;border-radius:6px}.moon-panel::-webkit-scrollbar-track,.moon-panel ::-webkit-scrollbar-track{background:#101724}
+      @media(max-width:500px){.moon-panel{top:85px;right:8px;width:270px}}
+    `;
+    (document.head || document.documentElement).appendChild(css);
+  }
   function addMoonDockButton(id, label, image, pane) { return moonDock().register(id, label, image, pane); }
   // END SHARED MOON DOCK
   const panel = document.createElement('section');
   panel.id = 'ipm-rota-best';
-  panel.style.cssText = "position:fixed;right:16px;top:110px;z-index:99999;width:340px;max-width:90vw;padding:14px;border:1px solid #6d80bb66;border-radius:16px;background:linear-gradient(160deg,#1e2b62f5,#0c1230f8);color:#eef3ff;font:13px/1.45 system-ui;box-shadow:0 12px 36px #0009";
-  panel.innerHTML = "<div data-handle style=\"cursor:move;display:flex;gap:10px;align-items:center;border-bottom:1px solid #8c9dd333;padding-bottom:11px;user-select:none\"><span style=\"font-size:25px\">🏆</span><div><strong style=\"letter-spacing:3px;color:#f5d67b;font-size:17px\">PAINEL</strong><div style=\"font-size:11px;color:#9cadde\">Rota do Bestiário 1.0.7 · arraste para mover</div></div></div><div style=\"font-size:10px;letter-spacing:2px;color:#b1c1ef;margin:15px 0 8px\">RESUMO DA ROTA</div><div style=\"display:flex;gap:8px\"><div style=\"flex:1;border:1px solid #8c9dd333;border-radius:10px;padding:10px\"><small>Concluídas</small><div data-counter style=\"font-weight:800;font-size:23px;color:#f5d67b\">0</div></div><div style=\"flex:1;border:1px solid #8c9dd333;border-radius:10px;padding:10px\"><small>Status</small><div data-mode style=\"font-weight:800;font-size:21px\">Pronto</div></div></div><div style=\"font-size:10px;letter-spacing:2px;color:#b1c1ef;margin:15px 0 8px\">CONFIGURAÇÕES</div><div style=\"display:flex;gap:8px\"><label style=\"flex:1\">Minutos por hunt<input data-min type=\"number\" min=\"1\" max=\"1440\" value=\"10\" style=\"width:100%;padding:7px;background:#0c1437;color:white;border:1px solid #7186b777;border-radius:7px\"></label><label style=\"flex:1\">Bolas por hunt<input data-balls type=\"number\" min=\"1\" max=\"1000\" value=\"60\" style=\"width:100%;padding:7px;background:#0c1437;color:white;border:1px solid #7186b777;border-radius:7px\"></label></div><div style=\"display:flex;gap:8px;margin-top:14px\"><button data-start style=\"flex:1;background:#376cdd;color:white;border:0;padding:10px;border-radius:9px;cursor:pointer\">▶ Iniciar / retomar</button><button data-stop style=\"flex:1;background:#8a3653;color:white;border:0;padding:10px;border-radius:9px;cursor:pointer\">Ⅱ Pausar</button></div><div data-status role=\"status\" style=\"white-space:pre-wrap;margin-top:12px;padding:10px;border-radius:10px;border:1px solid #8c9dd333\">Pronto. Nenhuma ação iniciada.</div><small style=\"display:block;margin-top:10px;color:#abbbe5\">Captura uma espécie normal por vez. Pausar mantém Auto-Catch e combate.</small>";
+  panel.className = 'moon-panel'; moonPanelTheme();
+  panel.innerHTML = `
+    <div data-handle class="moon-head"><span data-route-icon></span><span class="moon-title">Rota do Bestiário<span class="moon-dot"></span></span><button type="button" data-minimize title="Minimizar">−</button><button type="button" data-close title="Fechar painel">×</button></div>
+    <div class="moon-body">
+      <div class="moon-state"><span data-mode>Pronto</span><span>POKE MOON</span></div>
+      <div class="moon-metrics"><div class="moon-metric"><small>Concluídas</small><strong data-counter>0</strong></div><div class="moon-metric"><small>Espécies por vez</small><strong>1</strong></div></div>
+      <label class="moon-line"><span>⏱ Minutos por hunt</span><input data-min type="number" min="1" max="1440" value="10"></label>
+      <label class="moon-line"><span>◉ Bolas por hunt</span><input data-balls type="number" min="1" max="1000" value="60"></label>
+      <button type="button" data-start class="moon-go">▶ Iniciar / retomar</button>
+      <button type="button" data-stop class="moon-stop">Ⅱ Pausar rota</button>
+      <div data-status role="status" class="moon-detail">Pronto. Nenhuma ação iniciada.</div>
+      <div class="moon-foot">Captura uma espécie normal por vez.<br>Pausar mantém Auto-Catch e combate.</div>
+    </div>`;
+  const routeIcon = kjdMagmarCanvas(); if (routeIcon) panel.querySelector('[data-route-icon]').replaceWith(routeIcon);
+  panel.querySelector('[data-minimize]').onclick = e => { panel.classList.toggle('moon-collapsed'); e.currentTarget.textContent = panel.classList.contains('moon-collapsed') ? '+' : '−'; };
   panel.style.maxHeight='calc(100vh - 24px)';panel.style.overflowY='auto';
   document.body.appendChild(panel);
   addMoonDockButton('bestiario','Rota do Bestiário - Magmar',kjdMagmarCanvas(),panel);
-  const close=document.createElement('button');
-  close.type='button';close.textContent='×';close.title='Fechar painel';
-  close.style.cssText='position:absolute;top:8px;right:8px;background:#253968;color:white;border:1px solid #7282ac;border-radius:6px;padding:2px 8px;cursor:pointer;z-index:2';
-  close.onclick=()=>{panel.hidden=true;document.querySelectorAll('#kjd-moon-dock button').forEach(b=>b.classList.remove('active'))};
-  panel.appendChild(close);
+  panel.querySelector('[data-close]').onclick=()=>{panel.hidden=true;moonDock().sync()};
   moonDock().drag(panel, panel.querySelector('[data-handle]'), { storageKey: 'ipm-rota-bestiario-pos-v103' });
   const status = panel.querySelector('[data-status]');
   const startButton = panel.querySelector('[data-start]');
-  function say(message) { status.textContent = message;panel.querySelector('[data-counter]').textContent=completed.size;panel.querySelector('[data-mode]').textContent=running?'Ativa':'Pausada'; }
+  function say(message) { panel.classList.toggle('moon-active', running); status.textContent = message;panel.querySelector('[data-counter]').textContent=completed.size;panel.querySelector('[data-mode]').textContent=running?'Ativa':'Pausada'; }
   function numberSetting(selector, max) {
     const value = Number(panel.querySelector(selector).value);
     if (!Number.isFinite(value) || value < 1 || value > max) throw new Error('Preencha limites válidos no painel.');

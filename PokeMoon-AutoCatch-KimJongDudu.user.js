@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon AutoCatch by KimJongDudu
 // @namespace    https://idlepokemoon.com.br/
-// @version      1.5.2
+// @version      1.5.3
 // @description  Auto Lançar em Minhas Capturas, com painel no dock lateral
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -151,6 +151,19 @@
     window.__kjdMoonDockV2 = { register, drag, clamp, sync };
     return window.__kjdMoonDockV2;
   }
+  function moonPanelTheme() {
+    if (document.getElementById('kjd-moon-panel-theme')) return;
+    const css = document.createElement('style'); css.id = 'kjd-moon-panel-theme';
+    css.textContent = `
+      .moon-panel{position:fixed;top:145px;right:28px;z-index:99000;width:292px;box-sizing:border-box;overflow:hidden;background:linear-gradient(145deg,#182238,#101724 55%,#0b111e);border:1px solid #816e43;border-radius:10px;color:#e8edf6;font:12px/1.35 system-ui,"Segoe UI",sans-serif;box-shadow:0 2px 0 #3a3223 inset,0 12px 38px #000b}
+      .moon-panel *{box-sizing:border-box}.moon-panel button{font:inherit;font-weight:750;cursor:pointer}.moon-panel .moon-head{display:flex;align-items:center;gap:8px;padding:8px 10px;background:linear-gradient(#303342,#222838);border-bottom:1px solid #685936;cursor:move;user-select:none;touch-action:none}.moon-panel .moon-head canvas{width:22px!important;height:22px!important;object-fit:contain;image-rendering:pixelated;flex-shrink:0}.moon-panel .moon-title{font-size:12px;font-weight:850;color:#f4e4b8;letter-spacing:.2px;flex:1;min-width:0}.moon-panel .moon-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#64748b;margin-left:5px}.moon-panel.moon-active .moon-dot{background:#4cda93;box-shadow:0 0 6px #4cda93}.moon-panel .moon-head button{background:#111827;border:1px solid #4d556b;color:#e8edf6;border-radius:5px;min-width:23px;width:23px;height:23px;padding:0;font-size:16px;flex-shrink:0}.moon-panel .moon-head button:hover{background:#263349}
+      .moon-panel .moon-body{padding:11px}.moon-panel.moon-collapsed .moon-body{display:none}.moon-panel .moon-state{padding:7px 9px;border:1px solid #31445c;background:#101c2a;border-radius:7px;color:#aebdd1;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px}.moon-panel.moon-active .moon-state{border-color:#326950;color:#8becbb}.moon-panel .moon-metrics{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:9px 0}.moon-panel .moon-metric{padding:9px;border:1px solid #303c50;border-radius:7px;background:#101a2b;min-width:0}.moon-panel .moon-metric small{display:block;color:#8898ae;font-size:10px}.moon-panel .moon-metric strong{display:block;color:#ffdb78;font-size:19px;line-height:1.4;font-variant-numeric:tabular-nums}.moon-panel .moon-metric .moon-value-text{font-size:12px;line-height:1.5;padding-top:4px;overflow-wrap:anywhere}
+      .moon-panel .moon-line{display:flex;justify-content:space-between;align-items:center;gap:7px;padding:7px 1px;border-top:1px solid #293346;color:#d2deed}.moon-panel input[type=number]{padding:5px;border:1px solid #485b77;border-radius:5px;color:#f7e9c8;background:#0d1727;outline:none;font:inherit}.moon-panel input[type=number]:focus{border-color:#d2ae5a;box-shadow:0 0 0 1px #d2ae5a55}.moon-panel .moon-line input[type=number]{width:84px;min-width:0}.moon-panel input[type=checkbox]{accent-color:#d2ae5a;width:16px;height:16px;flex-shrink:0}.moon-panel .moon-go,.moon-panel .moon-stop{width:100%;margin-top:9px;color:#eafff1;border:1px solid #59ad7c;border-radius:7px;padding:10px 8px;background:linear-gradient(#3a785b,#20593c)}.moon-panel .moon-go.active,.moon-panel .moon-stop{background:linear-gradient(#7a4549,#5b282f);border-color:#b76369;color:#ffe1e1}.moon-panel .moon-go:hover{filter:brightness(1.1)}.moon-panel button:disabled{opacity:.5;cursor:default}.moon-panel .moon-foot{font-size:10px;line-height:1.4;margin-top:8px;color:#8190a5;text-align:center}.moon-panel .moon-note{font-size:11px;line-height:1.5;margin:9px 0;color:#aebdd1}.moon-panel .moon-section{color:#f4e4b8;font-size:10px;font-weight:750;letter-spacing:.08em;margin:12px 0 5px}.moon-panel .moon-detail{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:9px;padding:8px 9px;border:1px solid #31445c;border-radius:7px;background:#101c2a;color:#aebdd1;font-size:11px}
+      .moon-panel,.moon-panel *{scrollbar-width:thin;scrollbar-color:#485b77 #101724}.moon-panel::-webkit-scrollbar,.moon-panel ::-webkit-scrollbar{width:6px;height:6px}.moon-panel::-webkit-scrollbar-thumb,.moon-panel ::-webkit-scrollbar-thumb{background:#485b77;border-radius:6px}.moon-panel::-webkit-scrollbar-track,.moon-panel ::-webkit-scrollbar-track{background:#101724}
+      @media(max-width:500px){.moon-panel{top:85px;right:8px;width:270px}}
+    `;
+    (document.head || document.documentElement).appendChild(css);
+  }
   function addMoonDockButton(id, label, image, pane) { return moonDock().register(id, label, image, pane); }
   // END SHARED MOON DOCK
   const css = document.createElement('style');
@@ -198,6 +211,7 @@
   function render() {
     if (!panel) return;
     panel.classList.toggle('kim-active', !!settings.enabled);
+    panel.classList.toggle('moon-active', !!settings.enabled);
     toggle.textContent = settings.enabled ? '⏹ Desativar AutoCatch' : '▶ Ativar AutoCatch';
     status.textContent = settings.enabled ? 'Monitorando capturas' : 'Em pausa';
     count.textContent = String(sent);
@@ -210,14 +224,15 @@
     panel = document.createElement('section');
     panel.id = 'kim-pm-panel';
     panel.hidden = true;
-    panel.className = 'panel hud';
+    panel.className = 'panel hud moon-panel';
+    moonPanelTheme();
     panel.innerHTML = `
-      <div class="kim-head drag-handle" title="Arraste para mover">
-        <span data-moon-head-icon></span><span class="kim-title">AutoCatch <span class="kim-dot"></span></span>
+      <div class="kim-head moon-head drag-handle" title="Arraste para mover">
+        <span data-moon-head-icon></span><span class="kim-title moon-title">AutoCatch <span class="kim-dot moon-dot"></span></span>
         <button type="button" data-min title="Minimizar">−</button>
         <button type="button" data-close title="Fechar">×</button>
       </div>
-      <div class="kim-body">
+      <div class="kim-body moon-body">
         <div class="kim-state"><span data-status>Em pausa</span><span>POKE MOON</span></div>
         <div class="kim-metrics">
           <div class="kim-metric"><small>Lançamentos</small><strong data-count>0</strong></div>

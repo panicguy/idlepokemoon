@@ -30,6 +30,8 @@ let server;
       const dock=document.querySelector('#kjd-moon-dock');check(dock,'dock missing');check(document.querySelectorAll('#kjd-moon-dock').length===1,'duplicate dock');
       check(dock.children.length===3,'three buttons');check(document.querySelectorAll('#kjd-moon-dock-style').length===1,'one shared style');
       const buttons=[...dock.querySelectorAll('button')],panes=[...document.querySelectorAll('[data-kjd-panel]')];check(panes.length===3&&panes.every(p=>p.hidden),'panels initially hidden');
+      check(document.querySelectorAll('#kjd-moon-panel-theme').length===1,'one shared panel theme');
+      for(const property of ['backgroundImage','borderColor','borderRadius','fontFamily'])check(new Set(panes.map(p=>getComputedStyle(p)[property])).size===1,'consistent theme: '+property);
       check(buttons.map(b=>b.dataset.kjdButton).join(',')==='autocatch,autorefill,bestiario','stable button order');
       const icons=buttons.map(b=>{const c=b.querySelector('canvas');check(c,'canvas icon missing');const pixels=c.getContext('2d').getImageData(0,0,c.width,c.height).data;check(pixels.some((v,i)=>i%4===3&&v>0),'transparent icon');return{button:b.dataset.kjdButton,width:c.width,height:c.height}});
       const saved=localStorage.getItem('kim-pokemoon-autocatch-settings')+'|'+localStorage.getItem('pm-autorefill-kjd-v1');
