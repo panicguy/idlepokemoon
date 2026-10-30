@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PokeMoon AutoRefill by KimJongDudu
 // @namespace    https://github.com/panicguy/idlepokemoon
-// @version      1.1.0
+// @version      1.2.0
 // @description  Reabastece Pokebolas e Potions com estoque-alvo; venda opcional do loot antes da compra. Independente do AutoCatch.
 // @match        https://idlepokemoon.com.br/play*
 // @match        https://www.idlepokemoon.com.br/play*
@@ -15,6 +15,21 @@
   if (window.__PM_AUTOREFILL_KJD__) return;
   window.__PM_AUTOREFILL_KJD__ = true;
 
+
+  function addMoonDockButton(id,label,image,pane) {
+    let dock=document.getElementById('kjd-moon-dock');
+    if(!dock){
+      const css=document.createElement('style');
+      css.textContent='#kjd-moon-dock{position:fixed;left:8px;top:50%;transform:translateY(-50%);z-index:2147483646;display:flex;flex-direction:column;gap:6px;padding:7px 5px;border:2px solid #785a28;border-radius:10px;background:#14100add;backdrop-filter:blur(4px)}#kjd-moon-dock button{width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:2px;border:1px solid transparent;border-radius:8px;background:transparent;cursor:pointer;font:23px system-ui;color:#ffe2a0}#kjd-moon-dock button:hover{background:#ffffff22}#kjd-moon-dock button.active{background:#d5aa4533;border-color:#d5aa45}#kjd-moon-dock img{width:29px;height:29px;image-rendering:pixelated;object-fit:contain;pointer-events:none}#kim-pm-panel[hidden],#kjd-autorefill[hidden],#ipm-rota-best[hidden]{display:none!important}';
+      document.head.appendChild(css);
+      dock=document.createElement('nav');dock.id='kjd-moon-dock';dock.setAttribute('aria-label','Automações Poke Moon');document.body.appendChild(dock);
+    }
+    const button=document.createElement('button');button.type='button';button.title=label;button.setAttribute('aria-label',label);
+    if(image){const img=document.createElement('img');img.src=image;img.alt='';button.appendChild(img)}else button.textContent='📖';
+    pane.hidden=true;pane.dataset.kjdPanel=id;
+    button.onclick=()=>{const opening=pane.hidden;document.querySelectorAll('[data-kjd-panel]').forEach(p=>{p.hidden=true});dock.querySelectorAll('button').forEach(b=>b.classList.remove('active'));pane.hidden=!opening;button.classList.toggle('active',opening)};
+    dock.appendChild(button);
+  }
   const STORAGE = 'pm-autorefill-kjd-v1';
   const ITEMS = [
     { key: 'ball:pokeball', name: 'Poké Ball', kind: 'ball', item: 'pokeball', price: 15, max: 10000 },
@@ -206,7 +221,8 @@
     });
     const collapse = make('button', '', '−'); collapse.title = 'Minimizar';
     collapse.addEventListener('click', () => { settings.collapsed = !settings.collapsed; collapse.textContent = settings.collapsed ? '+' : '−'; save(); update(); });
-    head.append(indicator, title, toggle, collapse); root.append(head);
+    const close=make('button','','×');close.title='Fechar painel';close.onclick=()=>{root.hidden=true;document.querySelectorAll('#kjd-moon-dock button').forEach(b=>b.classList.remove('active'))};
+    head.append(indicator,title,toggle,collapse,close);root.append(head);
     const body = make('div', 'kjd-content');
     body.append(make('p','kjd-help','Ative cada item e defina: mínimo = gatilho; alvo = estoque desejado. Ligado/desligado é mantido após recarregar.'));
     const sellLabel = make('label'); const sell = make('input'); sell.type = 'checkbox'; sell.checked = !!settings.sellFirst;
@@ -240,6 +256,7 @@
     summaryEl = make('div','kjd-summary');
     body.append(statusEl,summaryEl,make('div','kjd-warning','Venda "tudo" usa as regras do Mark. Em erros ou estoque não confirmado, o AutoRefill desliga. Compatível com o modo Card no aplicativo modificado.'));
     root.append(body); document.body.append(root);
+    addMoonDockButton('autorefill','AutoRefill - Magmar','https://raw.githubusercontent.com/panicguy/idlepokemoon/main/icons/magmar-refill.png',root);
     if (settings.x !== null && settings.y !== null) {
       root.style.left = `${Math.min(Math.max(0,settings.x),window.innerWidth - 60)}px`;
       root.style.top = `${Math.min(Math.max(0,settings.y),window.innerHeight - 40)}px`;
