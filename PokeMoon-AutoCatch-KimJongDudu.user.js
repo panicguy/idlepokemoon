@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon AutoCatch by KimJongDudu
 // @namespace    https://idlepokemoon.com.br/
-// @version      1.5.0
+// @version      1.5.1
 // @description  Auto Lançar em Minhas Capturas, com atalho na Mochila
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -11,6 +11,19 @@
 
 (() => {
   'use strict';
+  const KJD_ICON_SPEC={"w":15,"h":15,"c":"AAAAAAA4QP8MDAz/ADhB/6moKv/OywD/rq0X/zk7NP8uMDD/AFRl//DwAP+EhEH/XFxT/1hWVP9cXk//MjIy/xwcHP8AVWb/AIWr////AP/3+o3/cXFP/1VVVf9yck7/qKUs/z09Ov8SEhL/AIKp/0vG2//4+/3/+fq+/9LSAP+TkDD/Q0E5/zg4OP8AMTX/AGiG/wCJrf9Wyt7/ALvU/67iMP+/vwD/gYEm/zw8PP8mJib/CwsL/wBrh/8Ac5L/ALLM/wCcwP8Amr7/AJm7/wCWt/8AXWr/NjY2/ygoKP8AdZD/AHSS/wCKrP8AkrX/AJm8/wZlcv88Pj3/MTEx/ysrK/8kJCT/Ghoa/yIiIv8GGR//AEpW/wB+nv8Aepf/AH+d/wBkd/8fHx//HzI5/wCfv/8AjrD/X2Vt/7Oxuf8WFhb/UmBp/xwoLv/78Pn/f5Oe/6O8yf+en6j/i6Ov/0xmb/9cdn//fpeg/xUnLv/J0dz/","p":"AAAAAAABAQECAgAAAAAAAAAAAQMEBQYHCAICAAAAAAABCQUKCwwNDg8QAgAAAAEREhMUFRYXGBkPGgIAAAEbHB0eFBMfICEiDwIAIyQlJicoKCkqKysrIiwtIy4vMDEyMzQzNTYPNywtIzg5Ojs8MT0+P0BBQkMtREVGR0hJLS0tQixKQxpEREtFTE0jTk9OLTdBUEtEAEtRRERST1NPUkREUUsAAERUVVFSTlZOUlFXWEQAAABEWVNaUlJSWVVZWwAAAAAAW0tVXFxVV0tbAAAAAAAAAABbW1tbWwAAAAAA"};
+  function kjdPixelIcon(spec) {
+    try {
+      const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+      if(!ctx) throw Error('Canvas indisponível');
+      canvas.width=spec.w;canvas.height=spec.h;
+      canvas.style.cssText='width:29px;height:29px;object-fit:contain;image-rendering:pixelated;pointer-events:none';
+      const palette=atob(spec.c),indexes=atob(spec.p),frame=ctx.createImageData(spec.w,spec.h);
+      if(indexes.length!==spec.w*spec.h)throw Error('Ícone incompleto');
+      for(let i=0;i<indexes.length;i++){const k=indexes.charCodeAt(i)*4;for(let j=0;j<4;j++)frame.data[i*4+j]=palette.charCodeAt(k+j)}
+      ctx.putImageData(frame,0,0);return canvas;
+    } catch(e){console.warn('[Moon Dock] ícone indisponível',e);return null}
+  }
   if (window.__kimPokeMoonAutoCatch) return;
   window.__kimPokeMoonAutoCatch = true;
 
@@ -79,12 +92,8 @@
     button.type = 'button';
     button.title = label;
     button.setAttribute('aria-label', label);
-    if (image) {
-      const img = document.createElement('img');
-      img.src = image;
-      img.alt = '';
-      button.appendChild(img);
-    } else button.textContent = '📖';
+    if (image && image.tagName === 'CANVAS') button.appendChild(image);
+    else button.textContent = '🌙';
     pane.hidden = true;
     pane.dataset.kjdPanel = id;
     button.onclick = () => {
@@ -96,7 +105,6 @@
     };
     dock.appendChild(button);
   }
-  const icon = 'https://raw.githubusercontent.com/panicguy/idlepokemoon/main/icons/moon-ball.png';
 
   const css = document.createElement('style');
   css.textContent = `
@@ -158,7 +166,7 @@
     panel.className = 'panel hud';
     panel.innerHTML = `
       <div class="kim-head drag-handle" title="Arraste para mover">
-        <img src="${icon}" alt=""><span class="kim-title">AutoCatch <span class="kim-dot"></span></span>
+        <span data-moon-head-icon></span><span class="kim-title">AutoCatch <span class="kim-dot"></span></span>
         <button type="button" data-min title="Minimizar">−</button>
         <button type="button" data-close title="Fechar">×</button>
       </div>
@@ -175,6 +183,7 @@
       </div><i class="kim-grip" aria-hidden="true"></i>
     `;
     document.body.appendChild(panel);
+    const headIcon=panel.querySelector('[data-moon-head-icon]');const renderedIcon=kjdPixelIcon(KJD_ICON_SPEC);if(renderedIcon)headIcon.replaceWith(renderedIcon);else headIcon.textContent='🌙';
     status = panel.querySelector('[data-status]');
     toggle = panel.querySelector('[data-toggle]');
     count = panel.querySelector('[data-count]');
@@ -255,7 +264,7 @@
 
   function init() {
     createPanel();
-    addMoonDockButton('autocatch', 'AutoCatch - Moon Ball', icon, panel);
+    addMoonDockButton('autocatch', 'AutoCatch - Moon Ball', kjdPixelIcon(KJD_ICON_SPEC), panel);
     setInterval(tick, 500);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
   }
