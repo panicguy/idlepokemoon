@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Rota do Bestiário
 // @namespace    local.pokemoon.bestiario
-// @version      1.0.3
+// @version      1.0.4
 // @description  Visita hunts liberadas e captura uma espécie normal faltante por vez.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -23,11 +23,33 @@
   let lastStateAt = Date.now(), startedAt = 0, startBalls = 0;
   const completed = new Set();
   const totalBalls = s => Object.values(s.balls || {}).reduce((n, v) => n + Math.max(0, Number(v) || 0), 0);
+
+  function addMoonDockButton(id,label,image,pane) {
+    let dock=document.getElementById('kjd-moon-dock');
+    if(!dock){
+      const css=document.createElement('style');
+      css.textContent='#kjd-moon-dock{position:fixed;left:8px;top:50%;transform:translateY(-50%);z-index:2147483646;display:flex;flex-direction:column;gap:6px;padding:7px 5px;border:2px solid #785a28;border-radius:10px;background:#14100add;backdrop-filter:blur(4px)}#kjd-moon-dock button{width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:2px;border:1px solid transparent;border-radius:8px;background:transparent;cursor:pointer;font:23px system-ui;color:#ffe2a0}#kjd-moon-dock button:hover{background:#ffffff22}#kjd-moon-dock button.active{background:#d5aa4533;border-color:#d5aa45}#kjd-moon-dock img{width:29px;height:29px;image-rendering:pixelated;object-fit:contain;pointer-events:none}#kim-pm-panel[hidden],#kjd-autorefill[hidden],#ipm-rota-best[hidden]{display:none!important}';
+      document.head.appendChild(css);
+      dock=document.createElement('nav');dock.id='kjd-moon-dock';dock.setAttribute('aria-label','Automações Poke Moon');document.body.appendChild(dock);
+    }
+    const button=document.createElement('button');button.type='button';button.title=label;button.setAttribute('aria-label',label);
+    if(image){const img=document.createElement('img');img.src=image;img.alt='';button.appendChild(img)}else button.textContent='📖';
+    pane.hidden=true;pane.dataset.kjdPanel=id;
+    button.onclick=()=>{const opening=pane.hidden;document.querySelectorAll('[data-kjd-panel]').forEach(p=>{p.hidden=true});dock.querySelectorAll('button').forEach(b=>b.classList.remove('active'));pane.hidden=!opening;button.classList.toggle('active',opening)};
+    dock.appendChild(button);
+  }
   const panel = document.createElement('section');
   panel.id = 'ipm-rota-best';
   panel.style.cssText = "position:fixed;right:16px;top:110px;z-index:99999;width:340px;max-width:90vw;padding:14px;border:1px solid #6d80bb66;border-radius:16px;background:linear-gradient(160deg,#1e2b62f5,#0c1230f8);color:#eef3ff;font:13px/1.45 system-ui;box-shadow:0 12px 36px #0009";
   panel.innerHTML = "<div data-handle style=\"cursor:move;display:flex;gap:10px;align-items:center;border-bottom:1px solid #8c9dd333;padding-bottom:11px;user-select:none\"><span style=\"font-size:25px\">🏆</span><div><strong style=\"letter-spacing:3px;color:#f5d67b;font-size:17px\">PAINEL</strong><div style=\"font-size:11px;color:#9cadde\">Rota do Bestiário 1.0.3 · arraste para mover</div></div></div><div style=\"font-size:10px;letter-spacing:2px;color:#b1c1ef;margin:15px 0 8px\">RESUMO DA ROTA</div><div style=\"display:flex;gap:8px\"><div style=\"flex:1;border:1px solid #8c9dd333;border-radius:10px;padding:10px\"><small>Concluídas</small><div data-counter style=\"font-weight:800;font-size:23px;color:#f5d67b\">0</div></div><div style=\"flex:1;border:1px solid #8c9dd333;border-radius:10px;padding:10px\"><small>Status</small><div data-mode style=\"font-weight:800;font-size:21px\">Pronto</div></div></div><div style=\"font-size:10px;letter-spacing:2px;color:#b1c1ef;margin:15px 0 8px\">CONFIGURAÇÕES</div><div style=\"display:flex;gap:8px\"><label style=\"flex:1\">Minutos por hunt<input data-min type=\"number\" min=\"1\" max=\"1440\" value=\"10\" style=\"width:100%;padding:7px;background:#0c1437;color:white;border:1px solid #7186b777;border-radius:7px\"></label><label style=\"flex:1\">Bolas por hunt<input data-balls type=\"number\" min=\"1\" max=\"1000\" value=\"60\" style=\"width:100%;padding:7px;background:#0c1437;color:white;border:1px solid #7186b777;border-radius:7px\"></label></div><div style=\"display:flex;gap:8px;margin-top:14px\"><button data-start style=\"flex:1;background:#376cdd;color:white;border:0;padding:10px;border-radius:9px;cursor:pointer\">▶ Iniciar / retomar</button><button data-stop style=\"flex:1;background:#8a3653;color:white;border:0;padding:10px;border-radius:9px;cursor:pointer\">Ⅱ Pausar</button></div><div data-status role=\"status\" style=\"white-space:pre-wrap;margin-top:12px;padding:10px;border-radius:10px;border:1px solid #8c9dd333\">Pronto. Nenhuma ação iniciada.</div><small style=\"display:block;margin-top:10px;color:#abbbe5\">Captura uma espécie normal por vez. Pausar mantém Auto-Catch e combate.</small>";
+  panel.style.maxHeight='calc(100vh - 24px)';panel.style.overflowY='auto';
   document.body.appendChild(panel);
+  addMoonDockButton('bestiario','Rota do Bestiário',null,panel);
+  const close=document.createElement('button');
+  close.type='button';close.textContent='×';close.title='Fechar painel';
+  close.style.cssText='position:absolute;top:8px;right:8px;background:#253968;color:white;border:1px solid #7282ac;border-radius:6px;padding:2px 8px;cursor:pointer;z-index:2';
+  close.onclick=()=>{panel.hidden=true;document.querySelectorAll('#kjd-moon-dock button').forEach(b=>b.classList.remove('active'))};
+  panel.appendChild(close);
   const posKey='ipm-rota-bestiario-pos-v103';
   const handle=panel.querySelector('[data-handle]');let drag=null;
   const move=(x,y)=>{panel.style.left=Math.max(0,Math.min(x,innerWidth-panel.offsetWidth))+'px';panel.style.top=Math.max(0,Math.min(y,innerHeight-60))+'px';panel.style.right='auto';};
