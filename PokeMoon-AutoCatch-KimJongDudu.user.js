@@ -182,7 +182,7 @@
     const interval = panel.querySelector('[data-interval]');
     shiny.checked = !!settings.shiny;
     interval.value = settings.intervalMs;
-    panel.querySelector('[data-close]').addEventListener('click', () => { panel.hidden = true; });
+    panel.querySelector('[data-close]').addEventListener('click', () => { panel.hidden = true; document.querySelectorAll('#kjd-moon-dock button').forEach(b => b.classList.remove('active')); });
     panel.querySelector('[data-min]').addEventListener('click', () => {
       panel.classList.toggle('kim-collapsed');
       panel.querySelector('[data-min]').textContent = panel.classList.contains('kim-collapsed') ? '+' : '−';
