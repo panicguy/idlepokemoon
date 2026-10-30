@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon AutoCatch by KimJongDudu
 // @namespace    https://idlepokemoon.com.br/
-// @version      1.4.0
+// @version      1.5.0
 // @description  Auto Lançar em Minhas Capturas, com atalho na Mochila
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -62,7 +62,41 @@
     return;
   }
 
-  const icon = new URL('icons/pokebola.png', location.href).href;
+
+  // Sidebar shared by the three independent Poke Moon scripts.
+  function addMoonDockButton(id, label, image, pane) {
+    let dock = document.getElementById('kjd-moon-dock');
+    if (!dock) {
+      const css = document.createElement('style');
+      css.textContent = '#kjd-moon-dock{position:fixed;left:8px;top:50%;transform:translateY(-50%);z-index:2147483646;display:flex;flex-direction:column;gap:6px;padding:7px 5px;border:2px solid #785a28;border-radius:10px;background:#14100add;backdrop-filter:blur(4px)}#kjd-moon-dock button{width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:2px;border:1px solid transparent;border-radius:8px;background:transparent;cursor:pointer;font:23px system-ui;color:#ffe2a0}#kjd-moon-dock button:hover{background:#ffffff22}#kjd-moon-dock button.active{background:#d5aa4533;border-color:#d5aa45}#kjd-moon-dock img{width:29px;height:29px;image-rendering:pixelated;object-fit:contain;pointer-events:none}#kim-pm-panel[hidden],#kjd-autorefill[hidden],#ipm-rota-best[hidden]{display:none!important}';
+      document.head.appendChild(css);
+      dock = document.createElement('nav');
+      dock.id = 'kjd-moon-dock';
+      dock.setAttribute('aria-label', 'Automações Poke Moon');
+      document.body.appendChild(dock);
+    }
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    if (image) {
+      const img = document.createElement('img');
+      img.src = image;
+      img.alt = '';
+      button.appendChild(img);
+    } else button.textContent = '📖';
+    pane.hidden = true;
+    pane.dataset.kjdPanel = id;
+    button.onclick = () => {
+      const opening = pane.hidden;
+      document.querySelectorAll('[data-kjd-panel]').forEach(p => { p.hidden = true; });
+      dock.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      pane.hidden = !opening;
+      button.classList.toggle('active', opening);
+    };
+    dock.appendChild(button);
+  }
+  const icon = 'https://raw.githubusercontent.com/panicguy/idlepokemoon/main/icons/moon-ball.png';
 
   const css = document.createElement('style');
   css.textContent = `
@@ -189,43 +223,6 @@
     if (panel) { panel.hidden = !panel.hidden; render(); }
   }
 
-  function insertMenuEntry() {
-    if (!document.body) return;
-    const anchor = document.querySelector('#tbm-mochila');
-    if (!anchor) return;
-    if (!anchor.dataset.kimClickHook) {
-      anchor.dataset.kimClickHook = '1';
-      anchor.addEventListener('click', () => setTimeout(insertMenuEntry, 0));
-    }
-
-    // A bandeja do jogo muda dinamicamente. Identificamos o bloco por seus itens,
-    // e nunca anexamos a opção à barra inteira do topo.
-    const buttons = [...document.querySelectorAll('button,[role=menuitem]')];
-    const normalize = el => (el.textContent || '').trim().toLowerCase();
-    const mochilas = buttons.filter(b => normalize(b) === 'mochila');
-    const consumiveis = buttons.filter(b => normalize(b).includes('consumíveis'));
-    const capturas = buttons.filter(b => normalize(b).includes('minhas capturas'));
-    for (const a of mochilas) {
-      let ancestor = a.parentElement;
-      for (let depth = 0; ancestor && depth < 4; depth++, ancestor = ancestor.parentElement) {
-        if (!consumiveis.some(b => ancestor.contains(b)) ||
-            !capturas.some(b => ancestor.contains(b))) continue;
-        if (ancestor.id === 'topbar' || ancestor.contains(document.querySelector('#topbar'))) continue;
-        if (ancestor.querySelector('#kim-pm-menu-entry')) return;
-        menuButton = document.createElement('button');
-        menuButton.id = 'kim-pm-menu-entry';
-        menuButton.type = 'button';
-        menuButton.innerHTML = '<img src="' + icon + '" alt=""><span>AutoCatch</span>';
-        menuButton.addEventListener('click', e => {
-          e.stopPropagation();
-          openPanel();
-        });
-        ancestor.appendChild(menuButton);
-        return;
-      }
-    }
-  }
-
   function findLaunchButton() {
     for (const row of document.querySelectorAll('#cp-list .cp-row')) {
       if (!settings.shiny && row.classList.contains('shiny')) continue;
@@ -258,9 +255,7 @@
 
   function init() {
     createPanel();
-    insertMenuEntry();
-    const observer = new MutationObserver(() => insertMenuEntry());
-    observer.observe(document.body, { childList: true, subtree: true });
+    addMoonDockButton('autocatch', 'AutoCatch - Moon Ball', icon, panel);
     setInterval(tick, 500);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
   }
