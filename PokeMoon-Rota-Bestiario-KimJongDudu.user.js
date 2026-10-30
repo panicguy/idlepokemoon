@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Rota do Bestiário
 // @namespace    local.pokemoon.bestiario
-// @version      1.0.2
+// @version      1.0.3
 // @description  Visita hunts liberadas e captura uma espécie normal faltante por vez.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -25,18 +25,19 @@
   const totalBalls = s => Object.values(s.balls || {}).reduce((n, v) => n + Math.max(0, Number(v) || 0), 0);
   const panel = document.createElement('section');
   panel.id = 'ipm-rota-best';
-  panel.style.cssText = 'position:fixed;left:12px;top:100px;z-index:99999;width:300px;max-width:90vw;padding:14px;border:1px solid #6394bb;border-radius:12px;background:#101d2bf2;color:#f2f7ff;font:13px/1.45 system-ui;box-shadow:0 6px 24px #0008';
-  panel.innerHTML = `<strong>🏆 Rota do Bestiário · 1.0.2</strong>
-    <div style="margin:7px 0;color:#becedf">Captura 1 normal por espécie. Guardar no bestiário fica por sua conta. Pula espécies já disponíveis no Box.</div>
-    <label>Máximo de minutos por hunt <input data-min type="number" min="1" max="120" value="10" style="width:48px"></label><br>
-    <label>Máximo de bolas por hunt <input data-balls type="number" min="1" max="1000" value="60" style="width:48px"></label>
-    <div style="display:flex;gap:6px;margin-top:10px"><button data-start>Iniciar / retomar</button><button data-stop>Pausar</button></div>
-    <div data-status role="status" style="white-space:pre-wrap;margin-top:10px">Pronto. Nenhuma ação iniciada.</div>
-    <small>Pausar interrompe só a rota. Auto-Catch, combate e poções continuam conforme o Auto-Helper.</small>`;
+  panel.style.cssText = "position:fixed;right:16px;top:110px;z-index:99999;width:340px;max-width:90vw;padding:14px;border:1px solid #6d80bb66;border-radius:16px;background:linear-gradient(160deg,#1e2b62f5,#0c1230f8);color:#eef3ff;font:13px/1.45 system-ui;box-shadow:0 12px 36px #0009";
+  panel.innerHTML = "<div data-handle style=\"cursor:move;display:flex;gap:10px;align-items:center;border-bottom:1px solid #8c9dd333;padding-bottom:11px;user-select:none\"><span style=\"font-size:25px\">🏆</span><div><strong style=\"letter-spacing:3px;color:#f5d67b;font-size:17px\">PAINEL</strong><div style=\"font-size:11px;color:#9cadde\">Rota do Bestiário 1.0.3 · arraste para mover</div></div></div><div style=\"font-size:10px;letter-spacing:2px;color:#b1c1ef;margin:15px 0 8px\">RESUMO DA ROTA</div><div style=\"display:flex;gap:8px\"><div style=\"flex:1;border:1px solid #8c9dd333;border-radius:10px;padding:10px\"><small>Concluídas</small><div data-counter style=\"font-weight:800;font-size:23px;color:#f5d67b\">0</div></div><div style=\"flex:1;border:1px solid #8c9dd333;border-radius:10px;padding:10px\"><small>Status</small><div data-mode style=\"font-weight:800;font-size:21px\">Pronto</div></div></div><div style=\"font-size:10px;letter-spacing:2px;color:#b1c1ef;margin:15px 0 8px\">CONFIGURAÇÕES</div><div style=\"display:flex;gap:8px\"><label style=\"flex:1\">Minutos por hunt<input data-min type=\"number\" min=\"1\" max=\"1440\" value=\"10\" style=\"width:100%;padding:7px;background:#0c1437;color:white;border:1px solid #7186b777;border-radius:7px\"></label><label style=\"flex:1\">Bolas por hunt<input data-balls type=\"number\" min=\"1\" max=\"1000\" value=\"60\" style=\"width:100%;padding:7px;background:#0c1437;color:white;border:1px solid #7186b777;border-radius:7px\"></label></div><div style=\"display:flex;gap:8px;margin-top:14px\"><button data-start style=\"flex:1;background:#376cdd;color:white;border:0;padding:10px;border-radius:9px;cursor:pointer\">▶ Iniciar / retomar</button><button data-stop style=\"flex:1;background:#8a3653;color:white;border:0;padding:10px;border-radius:9px;cursor:pointer\">Ⅱ Pausar</button></div><div data-status role=\"status\" style=\"white-space:pre-wrap;margin-top:12px;padding:10px;border-radius:10px;border:1px solid #8c9dd333\">Pronto. Nenhuma ação iniciada.</div><small style=\"display:block;margin-top:10px;color:#abbbe5\">Captura uma espécie normal por vez. Pausar mantém Auto-Catch e combate.</small>";
   document.body.appendChild(panel);
+  const posKey='ipm-rota-bestiario-pos-v103';
+  const handle=panel.querySelector('[data-handle]');let drag=null;
+  const move=(x,y)=>{panel.style.left=Math.max(0,Math.min(x,innerWidth-panel.offsetWidth))+'px';panel.style.top=Math.max(0,Math.min(y,innerHeight-60))+'px';panel.style.right='auto';};
+  try{const p=JSON.parse(localStorage.getItem(posKey));if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y))move(p.x,p.y)}catch{}
+  handle.addEventListener('pointerdown',e=>{if(e.button!==0)return;const r=panel.getBoundingClientRect();drag={id:e.pointerId,dx:e.clientX-r.left,dy:e.clientY-r.top};handle.setPointerCapture(e.pointerId);e.preventDefault()});
+  handle.addEventListener('pointermove',e=>{if(drag&&drag.id===e.pointerId)move(e.clientX-drag.dx,e.clientY-drag.dy)});
+  handle.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;drag=null;const r=panel.getBoundingClientRect();try{localStorage.setItem(posKey,JSON.stringify({x:r.left,y:r.top}))}catch{}});
   const status = panel.querySelector('[data-status]');
   const startButton = panel.querySelector('[data-start]');
-  function say(message) { status.textContent = message; }
+  function say(message) { status.textContent = message;panel.querySelector('[data-counter]').textContent=completed.size;panel.querySelector('[data-mode]').textContent=running?'Ativa':'Pausada'; }
   function numberSetting(selector, max) {
     const value = Number(panel.querySelector(selector).value);
     if (!Number.isFinite(value) || value < 1 || value > max) throw new Error('Preencha limites válidos no painel.');
@@ -157,7 +158,7 @@
       const used = Math.max(0, startBalls - totalBalls(s));
       const elapsed = (Date.now() - startedAt) / 60000;
       if (used >= numberSetting('[data-balls]',1000)) throw new Error('Limite de bolas atingido em ' + target.name + '.');
-      if (elapsed >= numberSetting('[data-min]',120)) throw new Error('Limite de tempo atingido em ' + target.name + '.');
+      if (elapsed >= numberSetting('[data-min]',1440)) throw new Error('Limite de tempo atingido em ' + target.name + '.');
       say('Caçando: ' + target.name + '\n' + used + ' bolas · ' + elapsed.toFixed(1) + ' min\nConcluídas nesta sessão: ' + completed.size);
     } catch (error) {
       if (error.transient || error.name === 'TimeoutError' || error instanceof TypeError) {
@@ -177,7 +178,7 @@
       if (typeof window.IPM_HUNTS?.liberadas !== 'function' || typeof window.IPM_ON_STATE !== 'function') {
         throw new Error('Interface do jogo indisponível. Recarregue a página.');
       }
-      numberSetting('[data-min]',120); numberSetting('[data-balls]',1000);
+      numberSetting('[data-min]',1440); numberSetting('[data-balls]',1000);
       checkSafety();
       say('Consultando hunts e bestiário…');
       await refresh(true);
