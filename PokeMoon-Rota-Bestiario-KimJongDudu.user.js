@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Rota do Bestiário
 // @namespace    local.pokemoon.bestiario
-// @version      1.0.4
+// @version      1.0.5
 // @description  Visita hunts liberadas e captura uma espécie normal faltante por vez.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -24,6 +24,7 @@
   const completed = new Set();
   const totalBalls = s => Object.values(s.balls || {}).reduce((n, v) => n + Math.max(0, Number(v) || 0), 0);
 
+  const KJD_MAGMAR_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACMAAAAnCAMAAACylgF9AAABGWlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGBSSCwoyGESYGDIzSspCnJ3UoiIjFJgf8XAxSDLIM7AzSCfmFxc4BgQ4MMABDAaFXy7xsAIoi/rgszClMcLuFJSi5OB9B8gzk4uKCphYGDMALKVy0sKQOweIFskKRvMXgBiFwEdCGRvAbHTIewTYDUQ9h2wmpAgZyD7A5DNlwRmM4Hs4kuHsAVAbKi9ICDomJKflKoA8r2GoaWlhSaJfiAISlIrSkC0c35BZVFmekaJgiMwpFIVPPOS9XQUjAyMzBgYQOEOUf05EByejGJnEGIIgBCbI8HA4L+UgYHlD0LMpJeBYYEOAwP/VISYmiEDg4A+A8O+OcmlRWVQYxiZjBkYCPEBQ4VKavFzojUAAAGAUExURaJtV8lZJNmqSKlkJG5hVJMzJJ+hnu3VbnNwbGxsbaaLX6mVkvDPPIx2b7ylNLCmoeWeKMO1rujq6Tc3Nz8+RVxQMmRYRn6Afql/gKqmpr///+/ehwAAAFAZD44lFjAWD68nFnAlFf///2scEFMmEtFHMxAIB1NGMpEbEY52KL29vU03FCwjF1pYVnM1GLA4JsqnMTINCFVGF25YGqmKKMgrF86ZLMnJyWtra88yGhkZF3NnZcw5J0tFRmpJGXdzc62qpysoKFQ4LmtXVJWUkzo1G0ssKVtbWJBnJoODg614K9bW1vPWTzc1NJBHKYxbGqWlpbSzs/j6+XZ3d7BoHbWXK9N0LNKyNPCmUevJSGk2LotGGIyIhpeVlbMwGtSJKOi5M+/IMfjWZ0dHR3EpI3VFKmhKR2dWII1WMIxaUIRlHpiEJ5KETo2JidXV1OelLUQNCntpJI4rIZNpZ6YeFKhEL7BVKqCdndKKStibTcjJyfX19SsrK1NRSmJHJXNlHfdlQm0AAACAdFJOU/r////g/x7/Lp7///+p/1b/Jv9m//9Ugv+QBP8A//////8D//////7//w7///////////////8ItP/////8//8u///7Uf//0P8J/wn//f//////lP//////////cP///////1T//fj///z/////////////////vP///zRwU3b/10NyYQAAA8RJREFUeNpt1Pd72jgYB3AHspvO23eWZHliPDC2MXsT9ggJJCF7772aNh3/emVIcndtvz/4eYQ+aLySTdE0vb1NP2X0k/ipQn8Xima3v3zZHh20xj+fnMifKz+YitiSpfH+75XfU2Njk6WfGW/vH2n84eGh9kvqfLOcZH+Y6++PM8Oyx3MSP2tr5Q9bU87BsP97wxLTeuMMjGervlFFBbcjkwnTNPv2bc01q2LnjaHEZ2dnzxrWRr1n901GFEvkyfMvB8br2TJk7aydLzubPfm3F2RBhb1bMEy/puxq+SVLjaZNY2us3k1N5lHH2XCs3KqfzuSvBCBlqKqx3sqFqZJyTsjU5rkiinpnvePV0WkbXSUYgHjbWJ9fLoapYbXlnK87TgcDHLi7E4SALi3BQAASU3XmialRo3m+M0QiQAgDCUEYEm55ABmGQwikWsvLhyssRb8XdW+IdF1BJhQlSBAg4CAEwSBCwaC64tb5vcgxpGvEd0NMNJFICAkIAEBBEAhg5G6yb6AgJBifjwmRMOQPgaCioJ2AQEzc75q/GsQwzA0xg4QSgaB1yd8KZN1AjPTvRm0PQN9ziIkywZZ9mdKjHAeDfUOz+QsfdbgD3SxdU6FoCAbLzrHJMwAP4V13XzSrXdz8SeWazebaTnKVGAaSysgmzwF9fgjH/H0T9BWLS5Oe+yaI/ToSikJctmVTJ7tPLawvD0w7fpE7oD4sLlZ3wQ4TYjjeOrJ4jAExRmtgZmfEXeqeGI93hOwLckBRSK1JHc3uwtd/TZP33i8uzjcxhAhwpIYcXIsCRbatZ8NjTj+ozt/pABTzS+5ZuOMpinlpDszH0yQPOIKaI5gDxescOdO1NYgVyzJNqTTYu/YuibCu6xg/HjgTXYNAr9q2rPZr+FpLpzUVAcBjSAqLi2mJDMqBlOwYxitLipBx2lpaEwlBPNmujnmJiksol0NlZ2NhqmebKlnPu1lNBABjpJh86gin9tX0ajZ9iuSFzc1e3bBc006m44RwAKnKUde2j/clN/vdjXq93huYysRE/HCJjFPUFOvYMLrH+4qiqke2seDxGIO5aLqUnNnjMdJmGtOW/croymYspppfZTfWdDbsmtpKI51HhRrtj6NpScqpUsa/ElOn3aBS2L0/BEUikTlycTN59yLHkuRlrk00EOaf7mE/pTny8Ddw1H2v+t8EVgOkwaG5Z8O6oyRPDwMv9rIZuu/T15CKowL7bNyE5+I5kI8UHhuRJEhG/mDp/xkyYzabLTw1IqQx9/it+0/YcDj8k8Y3tysAfqlXfMkAAAAASUVORK5CYII=';
   function addMoonDockButton(id,label,image,pane) {
     let dock=document.getElementById('kjd-moon-dock');
     if(!dock){
@@ -33,7 +34,7 @@
       dock=document.createElement('nav');dock.id='kjd-moon-dock';dock.setAttribute('aria-label','Automações Poke Moon');document.body.appendChild(dock);
     }
     const button=document.createElement('button');button.type='button';button.title=label;button.setAttribute('aria-label',label);
-    if(image){const img=document.createElement('img');img.src=image;img.alt='';button.appendChild(img)}else button.textContent='📖';
+    if(image){const img=document.createElement('img');img.onerror=()=>{img.remove();button.textContent='🔥';};img.src=image;img.alt='';button.appendChild(img)}else button.textContent='📖';
     pane.hidden=true;pane.dataset.kjdPanel=id;
     button.onclick=()=>{const opening=pane.hidden;document.querySelectorAll('[data-kjd-panel]').forEach(p=>{p.hidden=true});dock.querySelectorAll('button').forEach(b=>b.classList.remove('active'));pane.hidden=!opening;button.classList.toggle('active',opening)};
     dock.appendChild(button);
@@ -44,7 +45,7 @@
   panel.innerHTML = "<div data-handle style=\"cursor:move;display:flex;gap:10px;align-items:center;border-bottom:1px solid #8c9dd333;padding-bottom:11px;user-select:none\"><span style=\"font-size:25px\">🏆</span><div><strong style=\"letter-spacing:3px;color:#f5d67b;font-size:17px\">PAINEL</strong><div style=\"font-size:11px;color:#9cadde\">Rota do Bestiário 1.0.3 · arraste para mover</div></div></div><div style=\"font-size:10px;letter-spacing:2px;color:#b1c1ef;margin:15px 0 8px\">RESUMO DA ROTA</div><div style=\"display:flex;gap:8px\"><div style=\"flex:1;border:1px solid #8c9dd333;border-radius:10px;padding:10px\"><small>Concluídas</small><div data-counter style=\"font-weight:800;font-size:23px;color:#f5d67b\">0</div></div><div style=\"flex:1;border:1px solid #8c9dd333;border-radius:10px;padding:10px\"><small>Status</small><div data-mode style=\"font-weight:800;font-size:21px\">Pronto</div></div></div><div style=\"font-size:10px;letter-spacing:2px;color:#b1c1ef;margin:15px 0 8px\">CONFIGURAÇÕES</div><div style=\"display:flex;gap:8px\"><label style=\"flex:1\">Minutos por hunt<input data-min type=\"number\" min=\"1\" max=\"1440\" value=\"10\" style=\"width:100%;padding:7px;background:#0c1437;color:white;border:1px solid #7186b777;border-radius:7px\"></label><label style=\"flex:1\">Bolas por hunt<input data-balls type=\"number\" min=\"1\" max=\"1000\" value=\"60\" style=\"width:100%;padding:7px;background:#0c1437;color:white;border:1px solid #7186b777;border-radius:7px\"></label></div><div style=\"display:flex;gap:8px;margin-top:14px\"><button data-start style=\"flex:1;background:#376cdd;color:white;border:0;padding:10px;border-radius:9px;cursor:pointer\">▶ Iniciar / retomar</button><button data-stop style=\"flex:1;background:#8a3653;color:white;border:0;padding:10px;border-radius:9px;cursor:pointer\">Ⅱ Pausar</button></div><div data-status role=\"status\" style=\"white-space:pre-wrap;margin-top:12px;padding:10px;border-radius:10px;border:1px solid #8c9dd333\">Pronto. Nenhuma ação iniciada.</div><small style=\"display:block;margin-top:10px;color:#abbbe5\">Captura uma espécie normal por vez. Pausar mantém Auto-Catch e combate.</small>";
   panel.style.maxHeight='calc(100vh - 24px)';panel.style.overflowY='auto';
   document.body.appendChild(panel);
-  addMoonDockButton('bestiario','Rota do Bestiário',null,panel);
+  addMoonDockButton('bestiario','Rota do Bestiário - Magmar',KJD_MAGMAR_ICON,panel);
   const close=document.createElement('button');
   close.type='button';close.textContent='×';close.title='Fechar painel';
   close.style.cssText='position:absolute;top:8px;right:8px;background:#253968;color:white;border:1px solid #7282ac;border-radius:6px;padding:2px 8px;cursor:pointer;z-index:2';
