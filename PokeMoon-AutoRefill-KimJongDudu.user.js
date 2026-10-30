@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PokeMoon AutoRefill by KimJongDudu
 // @namespace    https://github.com/panicguy/idlepokemoon
-// @version      1.2.0
+// @version      1.2.1
 // @description  Reabastece Pokebolas e Potions com estoque-alvo; venda opcional do loot antes da compra. Independente do AutoCatch.
 // @match        https://idlepokemoon.com.br/play*
 // @match        https://www.idlepokemoon.com.br/play*
@@ -12,6 +12,19 @@
 
 (() => {
   'use strict';
+  const KJD_ICON_SPEC={"w":13,"h":21,"c":"AAAAAAMHB/8AAAD/4ODg/7S0tP+JiYn/U1NT/wMGB/8cMzb/teYd/3eOjv8isUz/","p":"AAAAAAAAAAABAQEBAAAAAAAAAAICAwMDAwIAAAABAQEDAwMDBAUCAAICAwMDAwMEBQUFAgIDAwMDAwQFBQUFAgACBAQDBAUFBQIFAgAAAgQEBAUFBQUFBQIAAAIEBAQFBQYFBQYCAgACBAQEBQYHBgYCAgICAgQIBAUGBwcHAgIBAgIEBwQFBgcHAgIBAQICBgQEBQYCCAgBAQECAgIGBgYBCAgIAQkBAgIIAgIBCggLCAEBAQICCAgICgoICAgBAQECAgkICAoKCAkIAQkBAgIICAsKCgICAgIBAQICCAICCgoCAgICAgICAgICAgoKAgsCAgICAAACAgIKCgICAgICAAAAAAICAgICAgIAAAAA"};
+  function kjdPixelIcon(spec) {
+    try {
+      const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+      if(!ctx) throw Error('Canvas indisponível');
+      canvas.width=spec.w;canvas.height=spec.h;
+      canvas.style.cssText='width:29px;height:29px;object-fit:contain;image-rendering:pixelated;pointer-events:none';
+      const palette=atob(spec.c),indexes=atob(spec.p),frame=ctx.createImageData(spec.w,spec.h);
+      if(indexes.length!==spec.w*spec.h)throw Error('Ícone incompleto');
+      for(let i=0;i<indexes.length;i++){const k=indexes.charCodeAt(i)*4;for(let j=0;j<4;j++)frame.data[i*4+j]=palette.charCodeAt(k+j)}
+      ctx.putImageData(frame,0,0);return canvas;
+    } catch(e){console.warn('[Moon Dock] ícone indisponível',e);return null}
+  }
   if (window.__PM_AUTOREFILL_KJD__) return;
   window.__PM_AUTOREFILL_KJD__ = true;
 
@@ -25,7 +38,7 @@
       dock=document.createElement('nav');dock.id='kjd-moon-dock';dock.setAttribute('aria-label','Automações Poke Moon');document.body.appendChild(dock);
     }
     const button=document.createElement('button');button.type='button';button.title=label;button.setAttribute('aria-label',label);
-    if(image){const img=document.createElement('img');img.src=image;img.alt='';button.appendChild(img)}else button.textContent='📖';
+    if(image && image.tagName==='CANVAS')button.appendChild(image);else button.textContent='🧪';
     pane.hidden=true;pane.dataset.kjdPanel=id;
     button.onclick=()=>{const opening=pane.hidden;document.querySelectorAll('[data-kjd-panel]').forEach(p=>{p.hidden=true});dock.querySelectorAll('button').forEach(b=>b.classList.remove('active'));pane.hidden=!opening;button.classList.toggle('active',opening)};
     dock.appendChild(button);
@@ -256,7 +269,7 @@
     summaryEl = make('div','kjd-summary');
     body.append(statusEl,summaryEl,make('div','kjd-warning','Venda "tudo" usa as regras do Mark. Em erros ou estoque não confirmado, o AutoRefill desliga. Compatível com o modo Card no aplicativo modificado.'));
     root.append(body); document.body.append(root);
-    addMoonDockButton('autorefill','AutoRefill - Magmar','https://raw.githubusercontent.com/panicguy/idlepokemoon/main/icons/magmar-refill.png',root);
+    addMoonDockButton('autorefill','AutoRefill',kjdPixelIcon(KJD_ICON_SPEC),root);
     if (settings.x !== null && settings.y !== null) {
       root.style.left = `${Math.min(Math.max(0,settings.x),window.innerWidth - 60)}px`;
       root.style.top = `${Math.min(Math.max(0,settings.y),window.innerHeight - 40)}px`;
