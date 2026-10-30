@@ -52,7 +52,7 @@
   panel.appendChild(close);
   const posKey='ipm-rota-bestiario-pos-v103';
   const handle=panel.querySelector('[data-handle]');let drag=null;
-  const move=(x,y)=>{panel.style.left=Math.max(0,Math.min(x,innerWidth-panel.offsetWidth))+'px';panel.style.top=Math.max(0,Math.min(y,innerHeight-60))+'px';panel.style.right='auto';};
+  const move=(x,y)=>{panel.style.left=Math.max(0,Math.min(x,innerWidth-Math.max(panel.offsetWidth,Math.min(340,innerWidth*0.9))))+'px';panel.style.top=Math.max(0,Math.min(y,innerHeight-60))+'px';panel.style.right='auto';};
   try{const p=JSON.parse(localStorage.getItem(posKey));if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y))move(p.x,p.y)}catch{}
   handle.addEventListener('pointerdown',e=>{if(e.button!==0)return;const r=panel.getBoundingClientRect();drag={id:e.pointerId,dx:e.clientX-r.left,dy:e.clientY-r.top};handle.setPointerCapture(e.pointerId);e.preventDefault()});
   handle.addEventListener('pointermove',e=>{if(drag&&drag.id===e.pointerId)move(e.clientX-drag.dx,e.clientY-drag.dy)});
