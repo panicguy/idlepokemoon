@@ -114,7 +114,34 @@ function cardBridge() {
     };
   })();`;
 }
-function create({ file, views, origin, count = 3, fetchScript = download, presetsFile = null }) {
+function validateHuntsQuery(p) {
+  if (!p || typeof p !== 'object' || Array.isArray(p) || !Number.isInteger(p.nivel) || p.nivel < 1 || p.nivel > 100000) throw Error('Consulta de hunts inválida.');
+  const out = { por: 'xp', nivel: p.nivel, limite: 20 };
+  if (p.poke != null) { if (typeof p.poke !== 'string' || !/^[A-Za-z0-9_.:-]{1,64}$/.test(p.poke)) throw Error('Pokémon inválido.'); out.poke = p.poke; }
+  else { if (typeof p.esp !== 'string' || !/^[\p{L}\p{N} ._'’:+()&-]{1,80}$/u.test(p.esp)) throw Error('Espécie inválida.'); out.esp = p.esp.toLowerCase(); }
+  if (p.furiosa === true) out.furiosa = true;
+  if (p.tm === true && !out.poke) out.tm = true;
+  return out;
+}
+function huntsBridge() {
+  return `(() => {
+    if (window.__idleMoonHunts) return;
+    let pending = null, resolve = null, timer;
+    window.__idleMoonHunts = {
+      get pending() { return pending; },
+      request(query) {
+        if (pending) return Promise.reject(Error('Uma consulta já está em andamento.'));
+        const id = crypto.randomUUID();
+        return new Promise(done => {
+          resolve = done; pending = { id, query };
+          timer = setTimeout(() => this.settle(id, { ok: false, error: 'O Hub demorou para responder. Tente novamente.' }), 22000);
+        });
+      },
+      settle(id, result) { if (!pending || pending.id !== id) return; clearTimeout(timer); const done = resolve; pending = null; resolve = null; done(result); }
+    };
+  })();`;
+}
+function create({ file, views, origin, count = 3, fetchScript = download, presetsFile = null, recommendHunts = null }) {
   let scripts = []; const errors = new Map();
   try { const saved = JSON.parse(fs.readFileSync(file, 'utf8')); if (Array.isArray(saved)) scripts = saved.filter(s => typeof s.code === 'string' && s.meta && Array.isArray(s.accounts)); } catch (e) {
     if (e.code !== 'ENOENT') throw Error('Não foi possível ler automacoes.json: ' + e.message);
@@ -134,7 +161,8 @@ function create({ file, views, origin, count = 3, fetchScript = download, preset
     }
     const capability = (meta['idlemoon-card'] || [])[0];
     return { name: (meta.name || [new URL(url).pathname.split('/').pop()])[0], url, code, meta,
-      dependencies: deps.join('\n;\n'), cardSupport: ['autorefill-v1', 'autocatch-v1'].includes(capability) ? capability : undefined };
+      dependencies: deps.join('\n;\n'), cardSupport: ['autorefill-v1', 'autocatch-v1'].includes(capability) ? capability : undefined,
+      huntsSupport: (meta['idlemoon-hunts'] || [])[0] === 'shortcut-v1' ? 'shortcut-v1' : undefined };
   }
   function reload(accounts) { for (const i of accounts) { const wc = views()[i]?.webContents; if (wc && !wc.isDestroyed()) { try { if (new URL(wc.getURL()).origin === origin) wc.reload(); } catch (_) {} } } }
   async function inject(wc, i, phase) {
@@ -149,7 +177,7 @@ function create({ file, views, origin, count = 3, fetchScript = download, preset
       const matchUrl = card ? origin + '/play' : url;
       if ((s.meta.match || s.meta.include) && ![...(s.meta.match || []).map(p => matches(p, matchUrl)), ...(s.meta.include || []).map(p => matches(p, matchUrl, true))].some(Boolean)) continue;
       if ((s.meta['exclude-match'] || []).some(p => matches(p, matchUrl)) || (s.meta.exclude || []).some(p => matches(p, matchUrl, true))) continue;
-      try { await wc.executeJavaScript((card ? cardBridge() : '') + runtime(s), false); errors.delete(s.id); } catch (e) { errors.set(s.id, 'Conta ' + (i + 1) + ': ' + e.message); }
+      try { await wc.executeJavaScript((card ? cardBridge() : '') + (s.huntsSupport === 'shortcut-v1' ? huntsBridge() : '') + runtime(s), false); errors.delete(s.id); } catch (e) { errors.set(s.id, 'Conta ' + (i + 1) + ': ' + e.message); }
     }
   }
   async function request(p) {
@@ -183,16 +211,37 @@ function create({ file, views, origin, count = 3, fetchScript = download, preset
   }
   let queue = Promise.resolve();
   const ticking = new Set();
+  const huntReads = new Map();
+  async function pollHunts(wc, i) {
+    const pending = await wc.executeJavaScript('window.__idleMoonHunts && window.__idleMoonHunts.pending || null', false);
+    if (!pending || typeof pending.id !== 'string' || !/^[A-Za-z0-9-]{1,64}$/.test(pending.id)) return;
+    let result;
+    try {
+      const query = validateHuntsQuery(pending.query), now = Date.now();
+      if (now - (huntReads.get(wc.id) || 0) < 1500) throw Error('Aguarde um instante entre as consultas.');
+      huntReads.set(wc.id, now);
+      if (!recommendHunts) throw Error('Atualize o Hub para habilitar o recomendador neste atalho.');
+      const answer = await recommendHunts(query, i);
+      result = answer?.json && !answer.erro ? { ok: true, data: answer.json } : { ok: false, error: answer?.erro || 'Não foi possível consultar o recomendador.' };
+    } catch (e) { result = { ok: false, error: e.message }; }
+    if (!wc.isDestroyed()) await wc.executeJavaScript('window.__idleMoonHunts && window.__idleMoonHunts.settle(' + JSON.stringify(pending.id) + ',' + JSON.stringify(result) + ')', false);
+  }
   async function tickCard() {
     await Promise.all(views().map(async (view, i) => {
       const wc = view?.webContents;
-      if (!wc || wc.isDestroyed() || ticking.has(wc.id) || !scripts.some(s => s.enabled && ['autorefill-v1', 'autocatch-v1'].includes(s.cardSupport) && s.accounts.includes(i))) return;
-      try { const u = new URL(wc.getURL()); if (u.origin !== origin || u.pathname !== '/eco.html') return; } catch (_) { return; }
+      if (!wc || wc.isDestroyed() || ticking.has(wc.id)) return;
+      const relevant = scripts.filter(s => s.enabled && s.accounts.includes(i));
+      let pathname;
+      try { const u = new URL(wc.getURL()); if (u.origin !== origin) return; pathname = u.pathname; } catch (_) { return; }
+      if (pathname === '/play' && relevant.some(s => s.huntsSupport === 'shortcut-v1')) {
+        ticking.add(wc.id); try { await pollHunts(wc, i); } catch (_) {} finally { ticking.delete(wc.id); } return;
+      }
+      if (pathname !== '/eco.html' || !relevant.some(s => ['autorefill-v1', 'autocatch-v1'].includes(s.cardSupport))) return;
       ticking.add(wc.id);
       try { await wc.executeJavaScript('Promise.all([window.__idleMoonRefillTick && window.__idleMoonRefillTick(), window.__idleMoonCatchTick && window.__idleMoonCatchTick()]).then(() => undefined)', false); } catch (_) {} finally { ticking.delete(wc.id); }
     }));
   }
   return { inject, tickCard, request: p => { const result = queue.then(() => request(p)); queue = result.catch(() => {}); return result; } };
 }
-module.exports = { create, githubUrl, metadata, matches, runtime, cardBridge };
+module.exports = { create, githubUrl, metadata, matches, runtime, cardBridge, huntsBridge, validateHuntsQuery };
 

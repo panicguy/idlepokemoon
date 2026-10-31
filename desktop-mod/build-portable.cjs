@@ -19,7 +19,7 @@ const changes = new Map();
 function read(name) { const e = entry(name); return archive.subarray(base + Number(e.offset), base + Number(e.offset) + e.size).toString('utf8'); }
 function replace(name, before, after) { const text = changes.get(name) ?? read(name); if (!text.includes(before)) throw Error('Trecho esperado ausente: ' + name); changes.set(name, text.replace(before, after)); }
 replace('src/main/janela.js', '  const contas = [];', `  const contas = [];
-  const automacoes = require('./automacoes').create({ file: path.join(path.dirname(arquivoPrefs), 'automacoes.json'), views: () => contas, origin: origemJogo, count: CONTAS, presetsFile: path.join(__dirname, '..', '..', 'automation-presets.json') });
+  const automacoes = require('./automacoes').create({ file: path.join(path.dirname(arquivoPrefs), 'automacoes.json'), views: () => contas, origin: origemJogo, count: CONTAS, presetsFile: path.join(__dirname, '..', '..', 'automation-presets.json'), recommendHunts: p => api.hunts(p) });
   const timerAutomacoes = setInterval(() => { if (!win.isDestroyed()) automacoes.tickCard().catch(() => {}); }, 500);
   timerAutomacoes.unref?.();
   win.once('closed', () => clearInterval(timerAutomacoes));`);
@@ -37,10 +37,10 @@ replace('src/ui/painel.html', '<script src="painel-ajustes.js"></script>', '<scr
 replace('src/ui/painel-ajustes.js', "    raiz.append(sec('🎛️ Desempenho'), blocoPerfis(S));", "    raiz.append(sec('🤖 Automações'), window.blocoAutomacoes());\n    raiz.append(sec('🎛️ Desempenho'), blocoPerfis(S));");
 changes.set('src/ui/painel.css', read('src/ui/painel.css') + '\n.automacoes input{width:100%;box-sizing:border-box;margin:12px 0;padding:10px;border:1px solid #675a92;border-radius:8px;background:#11152b;color:#eee}.automacoes .n em{display:block;margin-top:6px}.auto-script{border-top:1px solid #45405d;margin-top:16px;padding-top:14px;display:grid;gap:10px}.auto-url{overflow-wrap:anywhere;opacity:.65}.automacoes p{line-height:1.5}\n');
 const manager = require('./automacoes');
-const presets = ['PokeMoon-AutoCatch-KimJongDudu.user.js', 'PokeMoon-AutoRefill-KimJongDudu.user.js', 'PokeMoon-Rota-Bestiario-KimJongDudu.user.js'].map(file => {
+const presets = ['PokeMoon-AutoCatch-KimJongDudu.user.js', 'PokeMoon-AutoRefill-KimJongDudu.user.js', 'PokeMoon-Rota-Bestiario-KimJongDudu.user.js', 'PokeMoon-Hunts-Rapidas-KimJongDudu.user.js'].map(file => {
   const code = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
   const meta = manager.metadata(code);
-  return { name: meta.name[0], url: 'https://raw.githubusercontent.com/panicguy/idlepokemoon/main/' + file, code, meta, cardSupport: (meta['idlemoon-card'] || [])[0], dependencies: '' };
+  return { name: meta.name[0], url: 'https://raw.githubusercontent.com/panicguy/idlepokemoon/main/' + file, code, meta, cardSupport: (meta['idlemoon-card'] || [])[0], huntsSupport: (meta['idlemoon-hunts'] || [])[0], dependencies: '' };
 });
 changes.set('automation-presets.json', JSON.stringify(presets, null, 2));
 changes.set('src/main/automacoes.js', fs.readFileSync(path.join(__dirname, 'automacoes.js'), 'utf8'));

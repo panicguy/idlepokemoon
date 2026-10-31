@@ -1,6 +1,6 @@
 # Idle Poke Moon — automações por KimJongDudu
 
-AutoCatch, AutoRefill e Rota do Bestiário para o navegador e para o aplicativo modificado. AutoCatch e AutoRefill também executam no modo **Card**; a Rota usa a tela completa.
+AutoCatch, AutoRefill, Rota do Bestiário e Hunts rápidas para o navegador e para o aplicativo modificado. AutoCatch e AutoRefill também executam no modo **Card**; a Rota usa a tela completa.
 
 ## Baixar o aplicativo pronto
 
@@ -25,7 +25,7 @@ No navegador, use um gerenciador de userscripts. No aplicativo modificado, cole 
 
 Os scripts instalados no Hub são cópias locais. O código em `desktop-mod` agora inclui **Atualizar do GitHub** para cada script: preserva ID, ativação e seleção de contas; as automações mantêm suas chaves de configuração. Um script ligado e alterado recarrega as contas selecionadas. Falhas de download ou validação mantêm a versão anterior.
 
-Esse botão exige uma nova montagem do Hub; a release desktop **mod1** já publicada continua sem ele. Nela, reinstale o script pela mesma URL para receber as novas versões. A próxima montagem do código usa **mod2**, com os três scripts disponíveis inicialmente desligados. Nenhum executável já publicado foi substituído por esta revisão.
+Esse botão exige uma nova montagem do Hub; a release desktop **mod1** já publicada continua sem ele. Nela, reinstale o script pela mesma URL para receber as novas versões. A próxima montagem do código usa **mod2**, com os quatro scripts disponíveis inicialmente desligados. Nenhum executável já publicado foi substituído por esta revisão.
 
 O dock é incorporado em cada script, sem arquivo remoto obrigatório. Os três ícones usam Canvas com pixels locais. Os testes no Electron 44.6.0 cobrem as seis ordens de carregamento, ícones, fechamento, duplicação, configuração e limites da janela. Veja [o relatório de validação](desktop-mod/VALIDACAO.md).
 
@@ -58,3 +58,11 @@ O GitHub Actions executa os testes a cada alteração. Há também uma montagem 
 
 Atualizações oficiais podem substituir as alterações. Esta versão é específica da base 0.4.0; uma exigência de versão nova pelo servidor requer uma nova base compatível.
 
+
+### Hunts rápidas 1.0.0 — Nintendo Switch
+
+[Instalar Hunts rápidas](https://raw.githubusercontent.com/panicguy/idlepokemoon/main/PokeMoon-Hunts-Rapidas-KimJongDudu.user.js). Requer a nova ponte de consulta do Hub deste código; a release mod1 e o navegador sem a ponte não oferecem o recomendador. A consulta usa o próprio serviço Hunts do Hub, com nível e espécie ou pokémon atual, Furiosa e TM opcionais. Só considera áreas identificadas sem ambiguidade e liberadas para a conta.
+
+No dock, abra o Switch e use **Consultar melhor XP** ou **Ir para melhor XP**. A viagem usa a ação `selectZone` da Rota do Bestiário, respeitando confirmações do jogo. **Voltar à hunt anterior** acompanha a última troca confirmada; **Salvar hunt atual** fixa uma referência e **Voltar à salva** retorna a ela mesmo após testar várias outras hunts. Histórico separado por conta e persistente após recarregar, começando na instalação. Nenhuma viagem é automática. Funciona na tela completa, sem suporte ao Card.
+
+Ícone Nintendo Switch da [wiki PokeXGames](https://wiki.pokexgames.com/images/4/42/Nintendo_Switch.png), incorporado como pixels locais. Os testes isolados no Electron cobrem as 24 ordens dos quatro scripts e o fluxo de consulta, ida, retorno e recusa, com viagens simuladas.

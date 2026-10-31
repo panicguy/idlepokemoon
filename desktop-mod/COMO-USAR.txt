@@ -33,3 +33,7 @@ uma versao nova, sera necessario atualizar a base do mod.
 Suporte, codigo e downloads:
 https://github.com/panicguy/idlepokemoon/releases
 
+
+HUNTS RAPIDAS: abra o Nintendo Switch no dock. Consulte ou va para melhor XP.
+Voltar a anterior acompanha a ultima troca; Salvar hunt atual fixa uma referencia
+para retornar depois de varios testes. Requer o Hub atualizado e tela completa.

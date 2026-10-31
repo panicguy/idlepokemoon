@@ -45,3 +45,7 @@ Versões: AutoCatch **1.5.3**, AutoRefill **1.3.0**, Rota do Bestiário **1.1.0*
 Os três usam o tema do AutoCatch: mesmo fundo azul escuro, borda dourada, fonte, cabeçalho compacto, ícone Canvas, estado e botões verdes/vermelhos. O Refill mantém a tabela com largura legível e o controle de ativação em um rodapé fora da área de rolagem. O Bestiário passou a usar o mesmo cabeçalho, cartões e campos, e recebeu minimizar. Seus seletores de controle e ações foram preservados.
 
 Os testes Electron cobrem igualdade das propriedades computadas de fundo, borda, raio e família de fonte nos três painéis, além dos testes anteriores de carregamento, configuração, ícones e limites. Os testes de Card continuam passando. A padronização não modifica os trechos de lançamento, compra/venda ou navegação das hunts.
+
+## Hunts rápidas 1.0.0
+
+Ponte limitada a consultas XP do recomendador original. Testes de filtro por nível/desbloqueio, correspondência ambígua, histórico persistente por conta, marcador fixo e validação da consulta passaram. Electron 44.6.0: 24 ordens dos quatro scripts, ícones locais e fluxo completo de consultar/ir/voltar/salvar/recusa com fetch simulado. Nenhuma viagem real foi usada nesses testes.

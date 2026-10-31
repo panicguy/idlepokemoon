@@ -29,6 +29,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Refill tests failed' }
           node desktop-mod/test-autocatch-card.cjs
           if ($LASTEXITCODE -ne 0) { throw 'AutoCatch tests failed' }
+          node desktop-mod/test-hunts-shortcut.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Hunt shortcut tests failed' }
           node desktop-mod/test-script-update.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Update tests failed' }
       - name: Test dock and icons in Electron
@@ -63,6 +65,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Refill tests failed' }
           node desktop-mod/test-autocatch-card.cjs
           if ($LASTEXITCODE -ne 0) { throw 'AutoCatch tests failed' }
+          node desktop-mod/test-hunts-shortcut.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Hunt shortcut tests failed' }
           node desktop-mod/test-script-update.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Update tests failed' }
       - name: Download and verify official base
