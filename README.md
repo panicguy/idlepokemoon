@@ -95,3 +95,9 @@ Automático prioriza a maior vantagem ofensiva dos tipos do Pokémon contra os d
 A rota troca o ativo com `setActive`, confirma a troca e só então viaja com `selectZone`. Caça em modo normal e repete a fila em ciclo. Próxima hunt agora antecipa a troca. Configurações e etapa ficam salvas por conta; rota nova começa pausada. Pausar preserva combate e captura, fechar só esconde o painel. Falhas temporárias tentam novamente até três vezes; desmaio, vida abaixo de 20%, alteração manual da área/ativo ou recusa do servidor pausam. Use uma única rota de viagem por vez.
 
 Não muda configurações do AutoCatch/Auto-Helper e não garante aparecimento de shinies. Configure a captura separadamente. Executa somente na tela completa, sem Card.
+
+### Recuperação automática no Centro (Rota Shiny 1.1.0)
+
+Se o Pokémon utilizado desmaiar, a rota usa goCity, identifica a Nurse no mapa e usa npcTalk para curar a equipe. Confirma a cura, recoloca o Pokémon original como ativo e retorna à mesma hunt. A etapa e o tempo restante são preservados; o tempo no Centro não é descontado. Também detecta o desmaio do Pokémon registrado caso o jogo já tenha ativado outro. Uma recuperação interrompida por recarregamento mantém sua fase salva. Se não encontrar a Nurse ou a cura não for confirmada, pausa com explicação.
+
+Atualização compatível com a lista da versão 1.0.0: mantém a mesma chave de armazenamento por conta e guarda uma cópia local anterior em kjd-rota-shiny-v1:before-healing-v110:<conta>. Atualize pelo botão Atualizar do GitHub do Hub; não remova o script.

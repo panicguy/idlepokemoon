@@ -63,3 +63,7 @@ Consulta real no Hub: Magmar → Magmortar, Planta 5000/5000, Inseto 4951/5000 e
 ## Rota Shiny 1.0.0
 
 Teste de vantagem dupla e seleção fixa do time. Electron isolado: prévia sem ações, rotação por tempo, ciclo, troca de ativo antes da viagem, avanço manual, pausa, timeout com nova tentativa e recusa. Todos os pedidos de jogo simulados.
+
+## Recuperação Shiny 1.1.0
+
+Simulação de desmaio com troca automática do ativo pelo jogo: goCity → npcTalk → setActive → selectZone. Conferidos mesma fila, etapa e 48 segundos restantes após a recuperação, além de cópia de configuração anterior à atualização. Nenhuma cura real foi executada no teste.
