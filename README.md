@@ -81,3 +81,7 @@ No dock, abra o Switch e use **Consultar melhor XP** ou **Ir para melhor XP**. A
 **Melhor XP após evoluir** só consulta o recomendador do próprio Hub depois de confirmar a mesma identidade do Pokémon na forma escolhida, usando a opção Meu pokémon. Viaja uma vez e encerra a rota. Não continua automaticamente outras evoluções. A ponte de Hunts do Hub atualizado é necessária para essa etapa.
 
 O script inicia pausado em uma instalação nova. Uma rota iniciada mantém o plano por conta após recarregar, validando novamente o Pokémon e a missão. Fechar o painel não pausa; use **Pausar rota**. Rode uma rota de viagem por vez. Funciona na tela completa; sem suporte ao Card. O símbolo Mega Stone é apenas o ícone do painel: esta versão trata evolução comum com roteiro de abates, não o sistema separado de Mega Evolução.
+
+### Hunt Furiosa no treino (Rota Evolutiva 1.1.0)
+
+Nova opção junto de Evoluir e Melhor XP. Desmarcada por padrão e salva por conta. Marque antes de iniciar para treinar em Hunt Furiosa. Para voltar ao modo normal, pause, desmarque e retome: o script troca o modo mesmo estando na mesma área. A escolha confirma a entrada Furiosa somente nas viagens de treino; a etapa de melhor XP após evoluir continua em hunt normal. As pausas por vida baixa e desmaio permanecem.
