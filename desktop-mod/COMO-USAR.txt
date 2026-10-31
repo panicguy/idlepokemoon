@@ -49,4 +49,10 @@ ROTA DE QUESTS (carta): Carregar quests, selecionar as diarias de abates por tip
 e escolher Pokemon automatico ou fixo. Pause Shiny/Evolutiva antes de Iniciar.
 Resgata somente as selecionadas prontas e confirma a entrega. Melhor XP ao
 terminar leva o ultimo Pokemon usado para a hunt recomendada pelo Hub.
-Chefes, evolucoes, itens e escolhas nao sao automatizados nesta versao.
+Preparacao de materiais de chefes esta disponivel na versao 1.1.0.
+Evolucoes e escolhas continuam manuais.
+
+CHEFES: selecione a etapa ja aceita. Coleta os materiais validos (inclusive
+grau minimo) e para antes de entregar o passo ou lutar. Para materiais que
+so caem de shiny no tier disponivel, o painel avisa. Ao finalizar, entregue
+manualmente e atualize a lista para preparar a proxima etapa.

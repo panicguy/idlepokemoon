@@ -73,3 +73,9 @@ Simulação de desmaio com troca automática do ativo pelo jogo: goCity → npcT
 Validação de IDs de diária por tipo, mínimo da hunt, quests bloqueadas/desconhecidas e seleção de áreas liberadas. Electron: consulta sem ações, seleção, ativação do Pokémon, caça válida, resgate somente pronto e confirmado, XP do último Pokémon, conflito com outra rota e recusa de resgate. Todas as ações simuladas.
 
 Consulta real somente leitura: diária Caça Elétrico reconhecida com 0/250 e hunt mínima 200. Painel instalado pausado, sem viajar, trocar Pokémon ou resgatar. Dock passou em 120 ordens com oito scripts.
+
+## Preparação de chefes 1.1.0
+
+Conferidos dados reais somente leitura: Regirock pede 19 Essências de Pedra T5+, contando 8 válidas entre 598 totais; fontes SR normal ou S shiny. Ticket do Eon exige Dragão em Hoenn; Relíquia de Unova exige região Unova. Testes de grau/tier, fonte shiny, reservas, tipos/regiões e fluxo completo sem bossQuestEntregar, bossQuestAceitar nem luta.
+
+Leitura no Hub atualizado confirmou Regirock 8/19 Essências de Pedra T5+, Regice 0/19 Gelo T5+ e Registeel 2/19 Terrestre T5+ e 13/13 Aço T5+. A seleção anterior foi preservada; nenhuma etapa de chefe foi entregue e nenhuma batalha iniciada.

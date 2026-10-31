@@ -104,8 +104,18 @@ Atualização compatível com a lista da versão 1.0.0: mantém a mesma chave de
 
 ### Rota de Quests 1.0.0 — time Rebosteio
 
-[Instalar Rota de Quests](https://raw.githubusercontent.com/panicguy/idlepokemoon/main/PokeMoon-Rota-Quests-Rebosteio.user.js). Painel compacto com a carta fornecida pelo usuário. **Carregar quests** consulta o Diário; selecione as diárias compatíveis e o Pokémon automático por tipos ou fixo do time. A primeira versão automatiza somente diárias de abates por tipagem (`d2-*`) confirmadas na lista diária revelada, com nível mínimo informado pelo jogo. Quests de chefes, evolução, itens, escolhas e objetivos desconhecidos aparecem como manuais. Não aceita nem troca caminhos/diárias.
+[Instalar Rota de Quests](https://raw.githubusercontent.com/panicguy/idlepokemoon/main/PokeMoon-Rota-Quests-Rebosteio.user.js). Painel compacto com a carta fornecida pelo usuário. **Carregar quests** consulta o Diário; selecione as diárias compatíveis e o Pokémon automático por tipos ou fixo do time. A primeira versão automatiza somente diárias de abates por tipagem (`d2-*`) confirmadas na lista diária revelada, com nível mínimo informado pelo jogo. Evolução, escolhas e objetivos desconhecidos aparecem como manuais; a preparação de materiais de chefes está disponível na versão 1.1.0. Não aceita nem troca caminhos/diárias.
 
 A rota prioriza hunts normais liberadas de menor nível que cumpram o mínimo da diária, ativa o Pokémon, acompanha o progresso e usa `questclaim` somente quando a quest selecionada estiver pronta. Só avança após confirmar o resgate na lista atualizada. Ao terminar a fila, **Melhor XP ao terminar** consulta o Hub para o Pokémon usado na última quest, viaja com ele e encerra. Pode ser desmarcado.
 
 Inicialmente pausada; seleções e plano são salvos por conta. Retoma após recarregar com validação do dia e dos objetivos. Uma mudança de dia pausa para atualizar a seleção. Desmaio do Pokémon usado leva à recuperação na Nurse; falhas de rede têm até três novas tentativas. Sem progresso por três minutos, alteração manual da hunt/ativo ou resgate não confirmado pausam. Não execute outra rota de viagem em paralelo; Shiny/Evolutiva ativas bloqueiam o início desta rota. Tela completa, sem Card. A ponte Hunts do Hub atualizado é necessária para a etapa final de XP.
+
+### Preparação de chefes — Rota de Quests 1.1.0
+
+Carregar quests também consulta as quests individuais de chefe já aceitas, na etapa atual. Selecione a preparação desejada e o Pokémon automático ou fixo. O script consulta a ficha do chefe e as origens do item fornecidas pelo jogo. Não aceita quests novas, não entrega passos, não consome itens e não chama ações de luta. Etapas somente de batalha ficam manuais.
+
+Materiais com grau usam o estoque válido para o pedido, não o total da mochila. As origens são filtradas por tier, espécie e necessidade de abate shiny conforme a resposta do servidor. Prefere origem de abate normal; quando só existir uma origem elegível que exige shiny, o painel informa isso. O drop não é garantido. Relíquias e tickets respeitam as restrições reconhecidas de região/tipo. Origens desconhecidas pausam em vez de serem adivinhadas.
+
+Ao reunir os materiais da etapa, registra Materiais preparados — entrega/luta manuais e passa à próxima selecionada. Quantidades preparadas ficam reservadas na contagem da fila, de forma conservadora inclusive entre graus, para não prometer o mesmo estoque a dois chefes. Entregue os passos manualmente depois de encerrar a coleta; após entregar, carregue a lista novamente e selecione a nova etapa. O script não avança sozinho por etapas que exigem consumir os materiais. Ao terminar a fila, mantém a opção de melhor XP para o último Pokémon usado.
+
+Sem progresso por uma hora em materiais, pausa para conferir a origem; diárias mantêm o limite de três minutos. Seleções anteriores e plano por conta usam a mesma chave de armazenamento.
