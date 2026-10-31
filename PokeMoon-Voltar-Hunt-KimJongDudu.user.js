@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Poke Moon Voltar à Hunt by KimJongDudu
 // @namespace    https://github.com/panicguy/idlepokemoon
-// @version      1.0.0
-// @description  Volte à hunt anterior ou a uma hunt salva. Ícone provisório de retorno.
+// @version      1.0.1
+// @description  Volte à hunt anterior ou a uma hunt salva. Atalho com a bicicleta do Pokémon.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
 // @grant        none
@@ -13,7 +13,9 @@
   'use strict';
   if (window.__kjdVoltarHunt) return;
   window.__kjdVoltarHunt = true;
-  // Temporary return-arrow icon, drawn locally.
+  // Bicycle sprite supplied by the user, embedded as exact RGBA pixels.
+  // Source: https://wiki.pokexgames.com/images/9/95/Bicycle4.png
+  const BICYCLE_PIXELS = {"w":24,"h":24,"rgba":"////AP///wD///8A////AAUHCf8NDg//DA0P/wEBAf8DAwP/AAAA/wAAAAsAAAAA////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AAcHCf8ICQr/ExMU/xQUFf9OTk//RUVF/0NDRP88PD3/GBkZ/xUVFv8QERL/CAkK/wYHCP////8A////AP///wD///8A////AP///wD///8A////AP///wD///8ADA0N/zw8PP9KSkr/Mzg4/zk7O/9FRET/TU1N/0hISP86Ojr/XGVl/zc5Of8wLy//TExM/zg4OP8CAwT/AAAA/wgKDf8EBQb/AAAA/////wD///8A////AP///wD///8ABQcK/wMEBv8CAwX/NgwM/ygWFv8FCgr/VVhY/1lfX/8JCwz/VAgI/y8gIP8CAwX/AwQG/wYIC/8HCAv/HR8h/zw+Rv80Njz/FBQV/wUGCP////8A////AP///wD///8ABQcK/xwdHv9DRkb/RSEi/xMDBP8KBgj/KCEh/x4VFf8IBwr/KAEB/zwfH/9DSEj/GRod/yEcCP95clj/bmlW/5OBPP94bD7/MzU8/x0cF/8GCAr/////AP///wD///8A////AAkKDP8MDQ//BQcK/////wBBCwz/wh4e/6QLC/8sAwP/BggK/////wAMDQ//BwkL/y4oCv9yYBr/UUMQ/yEbBP99aBf/bmAn/xwZCv8AAAD/////AP///wD///8A////AP///wD///8A////AP///wByFhb/9Ssr/7sICP91AwP/BQYI/////wD///8ABggK/wAAAv8GCAr/GBsg/zU2Of8EBQf/CwoG/wYIC/8GCAr/BggK/wYICv////8A////AP///wD///8AAAAADwAAAP4KCAn/LSUl/zIGBv+vAAD/HwQE/////wD///8ABggKAAYICgAGCAoADRMV/yMoKP////8A////ABUVFv88PDz/OTk5/zU1Nf8HCAr/////AP///wD///8ABwkM/y8wMf9sbW3/dXl5/1tdXf9jJCT/cQIC/wYGCP8AAAD/BQQE/xAHCv9CBQb/ZiAg/zcbG/////8A////ACQkJP8REhP/DA0O/2tra/9DQ0P/////AP///wD///8ABwkM/z4+P/9ubm7/ZGRk/4CGhv9FKCj/pgIC/1IEBf8pBAb/igwN/7IXF//eGhr/3wsN/1UBAf8MERP/HB0e/xITE/8FBgj/CQoL/4eHh/8LDA3/////AP///wD///8A////ABYXGf8fHx//AgME/0NHR/8PAgL/ngQE/80REf/bHBz/zxQU/6cLC/9ZBAX/cA8F/0AUE/9RWFj/VVVW/1VUUv8wLyn/T1BQ/01NTf8GBwr/////AP///wAHCQz/HB0e/x8fH/8fHx//GRoa/35+fv8CBwj/QAID/8YICP96AwL/GQID/wMEBf8EDAT/NjgK/yo0MP83QUH/HiQk/yUjHf8oJBH/e3t+/wkKC/////8ABggKLQgKDf8vLzD/Xl5e/zU1Nf8eHh7/GBgY/3R0df8KDRP/BgID/6gGBv9rAgP/KikJ/11REf+8niP/jn0d/zQMB/9VAAD/PRgX/xcfH/8mJyr/UlJP/wQFB/////8ABggKUhUWGP9gYGD/LS0t/xYVFv9BQUH/BQYI/0pIQ/9bUCD/Bw0N/0QCAv/BBwf/MA4D/xMTCP9XSRH/T0US/xQDAP8UBAX/UAIC/1IpKf9ocHb/WU4g/z42FP8FBwr/DhAS/0lJSf8+Pj7/BQYI/xkaHP9LS0v/Hx8h/zExMP+EcR//ODQV/wQDBP+oBwf/gQME/wYEBv8BAgb/GCAn/x0EBP8fEBD/OUdH/0YAAP8pEBH/DxAH/11SIf8DBAj/Hh8g/1RUVP8RERL/BggL/yMkJf+ampr/Tk5O/yYnMP9fUx7/cWIj/wMEB/9GAQH/mAUF/ycFBf8QExP/LxcX/y4UFP9VDAz/eBgY/4ANDf8hAQH/CgwG/2tdJv8DBAj/DAwN/y0tLf8GCAn/BggL/2BgYP9YWFj/Pz8//y0tMP8REAv/iXUb/wcIBv8ZExX/HQIC/x4ODv9KR0f/YQ4O/3EXF/+AHBz/aTEx/1E6Ov8tKCv/FxUI/4BtJf8DBAf/CwsM/ygoKP8GCAn/BggL/2BgYP85OTn/RENE/z09P/8ICAb/j3kb/wcHBf8iJSf/GBwd/ygrK/8sLS3/GCIi/w4ZGf8LFhb/Nj09/2JlZv8OEBb/blsT/3JgF/8EBgj/DAwN/ysrK/8FBgf/BggL/1paWv9HSEj/Pz9A/zs8P/8QDgf/qo4h/wcIB/8FBwn/Hh4f/0FBQf8FBgb/EhIT/x8fH/8EBQf/BggL/wYIC/8KCQb/waEl/xkWDf////8ABgYH/ycnJ/8XFxf/BggL/xMUF/9iYmL/XV5f/wsNFP9lVRD/iXQi/wUGCP////8ABQcK/xobHf8vMTP/MTIz/x4eHf8dHR3/BAUH/xsYCP98ah7/Wk4g/wUGCP////8ABQcKNwsMDf8xMTH/CgsM/wYIC/8GCAv/BggL/ykjCv+7niX/FxUN/////wD///8ABQYH/z4wJ/9MPTL/Pjcy/xQUFP8gICD/LCwt/zQyK/8kIRj/BAYI/////wD///8AAAAAAAUGCP8hISH/NTU1/wsMDf8HBwb/KiMJ/62SJP9LQx7/BQYI/////wD///8ABgYG/10xE/9lNhP/OiMU/wUGCf8EBgj/BQYH/wQFB/8GBwr/////AP///wD///8AAAAAAAAAAAAFBgj/GBgY/ykqLf9FQCj/XVEc/xcVDf8EBgj/////AP///wD///8A////AAYICv8GCAr/BggK/////wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8ABAYI/woLDP8NDQ7/BAUH/wQGCP////8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A"};
   // BEGIN SHARED MOON DOCK — embedded in each standalone userscript.
   function moonDock() {
     if (window.__kjdMoonDockV2) return window.__kjdMoonDockV2;
@@ -168,9 +170,9 @@
     <div class="moon-section">REFERÊNCIA PARA SEUS TESTES</div><div class="moon-detail" data-bookmark>Nenhuma hunt salva.</div><div class="hunt-grid"><button type="button" class="hunt-secondary" data-save>Salvar hunt atual</button><button type="button" class="hunt-secondary" data-return>Voltar à salva</button></div>
     <div class="moon-foot">Anterior acompanha suas trocas de hunt. A hunt salva fica fixa até você salvar outra.<br>Configure na tela completa. Nenhuma viagem é automática.</div></div>`;
   document.body.appendChild(panel);
-  function iconCanvas() { const canvas=document.createElement('canvas');canvas.width=24;canvas.height=24;const ctx=canvas.getContext('2d');ctx.strokeStyle='#f0ce77';ctx.lineWidth=3;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(9,4);ctx.lineTo(3,10);ctx.lineTo(9,16);ctx.moveTo(3,10);ctx.lineTo(15,10);ctx.bezierCurveTo(23,10,23,21,14,21);ctx.stroke();return canvas; }
+  function iconCanvas() { const spec=BICYCLE_PIXELS,canvas=document.createElement('canvas');canvas.width=spec.w;canvas.height=spec.h;const ctx=canvas.getContext('2d'),data=ctx.createImageData(spec.w,spec.h),pixels=atob(spec.rgba);for(let i=0;i<pixels.length;i++)data.data[i]=pixels.charCodeAt(i);ctx.putImageData(data,0,0);return canvas; }
   panel.querySelector('[data-icon]').replaceWith(iconCanvas());
-  const button = addMoonDockButton('huntreturn', 'Voltar à Hunt — ícone provisório', iconCanvas(), panel);
+  const button = addMoonDockButton('huntreturn', 'Voltar à Hunt — Bicicleta', iconCanvas(), panel);
   const dock = button.parentElement;
   // Older standalone scripts sort only their original three entries. Keep the new shortcut last.
   const keepLast = () => { const order = ['autocatch','autorefill','bestiario','hunts','huntreturn']; const sorted = [...dock.children].sort((a,b)=>order.indexOf(a.dataset.kjdButton)-order.indexOf(b.dataset.kjdButton)); if(sorted.some((b,i)=>dock.children[i]!==b)) sorted.forEach(b=>dock.appendChild(b)); };

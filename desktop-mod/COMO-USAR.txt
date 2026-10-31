@@ -35,6 +35,6 @@ https://github.com/panicguy/idlepokemoon/releases
 
 
 HUNTS RAPIDAS: abra o Nintendo Switch no dock. Consulte ou va para melhor XP.
-No script separado VOLTAR A HUNT (seta dourada provisoria), Voltar a anterior
+No script separado VOLTAR A HUNT (bicicleta), Voltar a anterior
 acompanha a ultima troca; Salvar hunt atual fixa uma referencia
 para retornar depois de varios testes. Requer o Hub atualizado e tela completa.
