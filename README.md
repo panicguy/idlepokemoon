@@ -14,6 +14,7 @@ O pacote não inclui contas, senhas, sessões, preferências nem logs do criador
 
 ## Scripts
 
+- [Instalar Rota Evolutiva 1.0.0](https://raw.githubusercontent.com/panicguy/idlepokemoon/main/PokeMoon-Rota-Evolutiva-KimJongDudu.user.js)
 - [Instalar AutoCatch 1.5.3](https://raw.githubusercontent.com/panicguy/idlepokemoon/main/PokeMoon-AutoCatch-KimJongDudu.user.js)
 - [Instalar AutoRefill 1.3.0](https://raw.githubusercontent.com/panicguy/idlepokemoon/main/PokeMoon-AutoRefill-KimJongDudu.user.js)
 
@@ -25,7 +26,7 @@ No navegador, use um gerenciador de userscripts. No aplicativo modificado, cole 
 
 Os scripts instalados no Hub são cópias locais. O código em `desktop-mod` agora inclui **Atualizar do GitHub** para cada script: preserva ID, ativação e seleção de contas; as automações mantêm suas chaves de configuração. Um script ligado e alterado recarrega as contas selecionadas. Falhas de download ou validação mantêm a versão anterior.
 
-Esse botão exige uma nova montagem do Hub; a release desktop **mod1** já publicada continua sem ele. Nela, reinstale o script pela mesma URL para receber as novas versões. A próxima montagem do código usa **mod2**, com os cinco scripts disponíveis inicialmente desligados. Nenhum executável já publicado foi substituído por esta revisão.
+Esse botão exige uma nova montagem do Hub; a release desktop **mod1** já publicada continua sem ele. Nela, reinstale o script pela mesma URL para receber as novas versões. A próxima montagem do código usa **mod2**, com os seis scripts disponíveis inicialmente desligados. Nenhum executável já publicado foi substituído por esta revisão.
 
 O dock é incorporado em cada script, sem arquivo remoto obrigatório. Os três ícones usam Canvas com pixels locais. Os testes no Electron 44.6.0 cobrem as seis ordens de carregamento, ícones, fechamento, duplicação, configuração e limites da janela. Veja [o relatório de validação](desktop-mod/VALIDACAO.md).
 
@@ -70,3 +71,13 @@ No dock, abra o Switch e use **Consultar melhor XP** ou **Ir para melhor XP**. A
 ### Voltar à Hunt 1.0.1 — script independente
 
 [Instalar Voltar à Hunt](https://raw.githubusercontent.com/panicguy/idlepokemoon/main/PokeMoon-Voltar-Hunt-KimJongDudu.user.js). Ícone: [bicicleta da wiki PokeXGames](https://wiki.pokexgames.com/images/9/95/Bicycle4.png), incorporado sem download durante o jogo. **Voltar à hunt anterior** acompanha a última troca confirmada; **Salvar hunt atual** fixa uma referência para testar várias hunts e **Voltar à salva** retorna a ela. Usa a viagem da Rota do Bestiário e funciona sozinho, sem o recomendador nem o script de XP. Histórico por conta, persistente e compatível com o Hunts rápidas 1.0.0. Instale também Hunts rápidas 1.1.0 para remover os controles antigos do Switch. Tela completa; nenhuma viagem automática.
+
+### Rota Evolutiva 1.0.0 — Mega Stone
+
+[Instalar Rota Evolutiva](https://raw.githubusercontent.com/panicguy/idlepokemoon/main/PokeMoon-Rota-Evolutiva-KimJongDudu.user.js). Consulte a missão de um Pokémon do time pelo painel; para iniciar, coloque esse mesmo Pokémon como ativo em **Time → Caçar com este**. A rota escolhe hunts normais liberadas dos tipos pendentes, priorizando o menor nível e respeitando um teto configurável (padrão 50). Ao completar um tipo, troca de área. Sem progresso por dois minutos, tenta outra área; pausa após três falhas, desmaio, troca do Pokémon ativo, vida abaixo de 20% ou erro do servidor. Nível baixo é uma heurística, não uma garantia de sobrevivência nem uma previsão de abates/h.
+
+**Evoluir quando estiver pronto** envia a evolução escolhida somente quando o roteiro indica abates, itens, pedras e nível completos. A ação pode consumir os recursos exigidos pelo jogo. Caminhos alternativos devem ser escolhidos na interface original; a rota não troca nem zera um caminho. Sem essa opção, aguarda a evolução manual ou o Auto Evoluir do jogo.
+
+**Melhor XP após evoluir** só consulta o recomendador do próprio Hub depois de confirmar a mesma identidade do Pokémon na forma escolhida, usando a opção Meu pokémon. Viaja uma vez e encerra a rota. Não continua automaticamente outras evoluções. A ponte de Hunts do Hub atualizado é necessária para essa etapa.
+
+O script inicia pausado em uma instalação nova. Uma rota iniciada mantém o plano por conta após recarregar, validando novamente o Pokémon e a missão. Fechar o painel não pausa; use **Pausar rota**. Rode uma rota de viagem por vez. Funciona na tela completa; sem suporte ao Card. O símbolo Mega Stone é apenas o ícone do painel: esta versão trata evolução comum com roteiro de abates, não o sistema separado de Mega Evolução.

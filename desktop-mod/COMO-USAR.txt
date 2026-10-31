@@ -38,3 +38,9 @@ HUNTS RAPIDAS: abra o Nintendo Switch no dock. Consulte ou va para melhor XP.
 No script separado VOLTAR A HUNT (bicicleta), Voltar a anterior
 acompanha a ultima troca; Salvar hunt atual fixa uma referencia
 para retornar depois de varios testes. Requer o Hub atualizado e tela completa.
+
+ROTA EVOLUTIVA (Mega Stone): consulte a missao do Pokemon do time. Coloque-o
+para cacar antes de Iniciar. Treina hunts baixas dos tipos exigidos (teto 50
+configuravel). Evoluir quando pronto pode consumir pedras, itens e gold.
+Melhor XP apos evoluir usa o recomendador do Hub para a nova forma confirmada.
+Escolha caminhos alternativos na tela original do jogo. Use uma rota por vez.

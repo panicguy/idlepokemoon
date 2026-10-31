@@ -53,3 +53,9 @@ Ponte limitada a consultas XP do recomendador original. Testes de filtro por ní
 ## Separação do retorno
 
 Hunts rápidas 1.1.0 contém apenas melhor XP. Voltar à Hunt 1.0.0 é independente, com seta provisória e reaproveitamento da chave de histórico anterior. Dock com cinco scripts e 120 permutações de carregamento.
+
+## Rota Evolutiva 1.0.0
+
+Testes de requisitos, caminhos, hunts de menor nível, bloqueios e identidade da evolução. Fluxo Electron isolado: consulta sem ação, treino por dois tipos, espera por item, evolução simulada e viagem de XP somente após confirmar nova forma; pausa, desmaio e recusa do servidor. Ícone local Mega Stone, sem requisições de imagem.
+
+Consulta real no Hub: Magmar → Magmortar, Planta 5000/5000, Inseto 4951/5000 e Gelo 5000/5000; prévia sugeriu Área de Burmy nível 1. Somente consulta: sem viagem, troca de Pokémon ou evolução real. Dock validado em 120 ordens com seis scripts.
