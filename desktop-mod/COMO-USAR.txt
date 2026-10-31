@@ -44,3 +44,9 @@ para cacar antes de Iniciar. Treina hunts baixas dos tipos exigidos (teto 50
 configuravel). Evoluir quando pronto pode consumir pedras, itens e gold.
 Melhor XP apos evoluir usa o recomendador do Hub para a nova forma confirmada.
 Escolha caminhos alternativos na tela original do jogo. Use uma rota por vez.
+
+ROTA DE QUESTS (carta): Carregar quests, selecionar as diarias de abates por tipo
+e escolher Pokemon automatico ou fixo. Pause Shiny/Evolutiva antes de Iniciar.
+Resgata somente as selecionadas prontas e confirma a entrega. Melhor XP ao
+terminar leva o ultimo Pokemon usado para a hunt recomendada pelo Hub.
+Chefes, evolucoes, itens e escolhas nao sao automatizados nesta versao.

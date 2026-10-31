@@ -67,3 +67,9 @@ Teste de vantagem dupla e seleção fixa do time. Electron isolado: prévia sem 
 ## Recuperação Shiny 1.1.0
 
 Simulação de desmaio com troca automática do ativo pelo jogo: goCity → npcTalk → setActive → selectZone. Conferidos mesma fila, etapa e 48 segundos restantes após a recuperação, além de cópia de configuração anterior à atualização. Nenhuma cura real foi executada no teste.
+
+## Rota de Quests 1.0.0
+
+Validação de IDs de diária por tipo, mínimo da hunt, quests bloqueadas/desconhecidas e seleção de áreas liberadas. Electron: consulta sem ações, seleção, ativação do Pokémon, caça válida, resgate somente pronto e confirmado, XP do último Pokémon, conflito com outra rota e recusa de resgate. Todas as ações simuladas.
+
+Consulta real somente leitura: diária Caça Elétrico reconhecida com 0/250 e hunt mínima 200. Painel instalado pausado, sem viajar, trocar Pokémon ou resgatar. Dock passou em 120 ordens com oito scripts.

@@ -29,6 +29,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Refill tests failed' }
           node desktop-mod/test-autocatch-card.cjs
           if ($LASTEXITCODE -ne 0) { throw 'AutoCatch tests failed' }
+          node desktop-mod/test-quests.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Quest tests failed' }
           node desktop-mod/test-shiny.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Shiny tests failed' }
           node desktop-mod/test-evolution.cjs
@@ -42,6 +44,8 @@ jobs:
         run: |
           npm install --no-save --package-lock=false electron@44.6.0
           if ($LASTEXITCODE -ne 0) { throw 'Electron setup failed' }
+          & .\node_modules\.bin\electron.cmd desktop-mod/test-quests-electron.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Quest flow tests failed' }
           & .\node_modules\.bin\electron.cmd desktop-mod/test-shiny-electron.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Shiny flow tests failed' }
           & .\node_modules\.bin\electron.cmd desktop-mod/test-evolution-electron.cjs
@@ -73,6 +77,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Refill tests failed' }
           node desktop-mod/test-autocatch-card.cjs
           if ($LASTEXITCODE -ne 0) { throw 'AutoCatch tests failed' }
+          node desktop-mod/test-quests.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Quest tests failed' }
           node desktop-mod/test-shiny.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Shiny tests failed' }
           node desktop-mod/test-evolution.cjs
