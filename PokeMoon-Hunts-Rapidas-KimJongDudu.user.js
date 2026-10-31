@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Poke Moon Hunts rápidas by KimJongDudu
 // @namespace    https://github.com/panicguy/idlepokemoon
-// @version      1.0.0
-// @description  Atalhos para a melhor hunt por XP do Hub, hunt anterior e hunt salva.
+// @version      1.1.0
+// @description  Atalho para a melhor hunt por XP do recomendador do Hub.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
 // @grant        none
@@ -147,11 +147,10 @@
 
   const BASE = 'kjd-hunts-rapidas-v1';
   const defaults = () => ({ mode: 'species', furiosa: false, tm: false });
-  let settings = defaults(), history = createHuntHistory(), owner = '', busy = false, zones = [], catalogAt = 0, recommendation = null;
+  let settings = defaults(), owner = '', busy = false, zones = [], catalogAt = 0, recommendation = null;
   const state = () => { try { return typeof K === 'object' && K?.player ? K : null; } catch (_) { return null; } };
   const token = () => { try { return typeof q === 'string' ? q : ''; } catch (_) { return ''; } };
   const readSaved = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (_) { return fallback; } };
-  const writeHistory = () => { if (owner) localStorage.setItem(BASE + ':history:' + owner, JSON.stringify(history.snapshot())); };
   const descriptor = s => {
     const index = Number.isInteger(s?.inst?.zona) ? s.inst.zona : s?.zone?.index;
     if (!Number.isInteger(index) || index < 0) return null;
@@ -165,14 +164,13 @@
   document.head.appendChild(style);
   panel.innerHTML = `<div class="moon-head" data-handle><span data-icon></span><span class="moon-title">Hunts rápidas<span class="moon-dot"></span></span><button type="button" data-minimize title="Minimizar">−</button><button type="button" data-close title="Fechar painel">×</button></div>
     <div class="moon-body"><div class="moon-state"><span data-status>Entre numa conta para usar</span><span>POKE MOON</span></div>
-    <div class="moon-metrics"><div class="moon-metric"><small>Hunt atual</small><strong class="moon-value-text" data-current>—</strong></div><div class="moon-metric"><small>Hunt anterior</small><strong class="moon-value-text" data-previous>—</strong></div></div>
+    <div class="moon-metrics"><div class="moon-metric"><small>Hunt atual</small><strong class="moon-value-text" data-current>—</strong></div></div>
     <label class="moon-line"><span>Cálculo de XP</span><select data-mode><option value="species">Média da espécie</option><option value="mine">Meu pokémon</option></select></label>
     <label class="moon-line"><span>Hunt Furiosa</span><input type="checkbox" data-furiosa></label><label class="moon-line" data-tm-row><span>Simular TM de área</span><input type="checkbox" data-tm></label>
     <div class="moon-note" data-context>Usa o recomendador de XP base/h do Hub.</div>
     <button type="button" class="hunt-secondary" data-consult>Consultar melhor XP</button><div class="moon-detail" data-result>Consulte para ver a recomendação. Ir para melhor XP também consulta antes de viajar.</div>
-    <button type="button" class="moon-go" data-best>▶ Ir para melhor XP</button><button type="button" class="hunt-secondary" data-back>↶ Voltar à hunt anterior</button>
-    <div class="moon-section">REFERÊNCIA PARA SEUS TESTES</div><div class="moon-detail" data-bookmark>Nenhuma hunt salva.</div><div class="hunt-grid"><button type="button" class="hunt-secondary" data-save>Salvar hunt atual</button><button type="button" class="hunt-secondary" data-return>Voltar à salva</button></div>
-    <div class="moon-foot">Anterior acompanha suas trocas de hunt. A hunt salva fica fixa até você salvar outra.<br>Configure na tela completa. Nenhuma viagem é automática.</div></div>`;
+    <button type="button" class="moon-go" data-best>▶ Ir para melhor XP</button>
+    <div class="moon-foot">Configure na tela completa. Nenhuma viagem é automática.</div></div>`;
   document.body.appendChild(panel);
   function iconCanvas() {
     const spec = SWITCH_PIXELS, canvas = document.createElement('canvas'); canvas.width = spec.w; canvas.height = spec.h;
@@ -184,25 +182,24 @@
   const button = addMoonDockButton('hunts', 'Hunts rápidas — Nintendo Switch', iconCanvas(), panel);
   const dock = button.parentElement;
   // Older standalone scripts sort only their original three entries. Keep the new shortcut last.
-  const keepLast = () => { if (dock.lastElementChild !== button) dock.appendChild(button); };
+  const keepLast = () => { const order = ['autocatch','autorefill','bestiario','hunts','huntreturn']; const sorted = [...dock.children].sort((a,b)=>order.indexOf(a.dataset.kjdButton)-order.indexOf(b.dataset.kjdButton)); if(sorted.some((b,i)=>dock.children[i]!==b)) sorted.forEach(b=>dock.appendChild(b)); };
   new MutationObserver(keepLast).observe(dock, { childList: true }); keepLast();
   moonDock().drag(panel, panel.querySelector('[data-handle]'), { storageKey: BASE + ':panel-position' });
   const $ = key => panel.querySelector('[data-' + key + ']');
   const label = value => value ? value.name + (value.furiosa ? ' · Furiosa' : '') : '—';
   function render() {
-    const s = state(), snapshot = history.snapshot();
-    $('current').textContent = label(snapshot.current); $('previous').textContent = label(snapshot.previous); $('bookmark').textContent = snapshot.bookmark ? label(snapshot.bookmark) : 'Nenhuma hunt salva.';
+    const s = state();
+    $('current').textContent = label(descriptor(s));
     $('mode').value = settings.mode; $('furiosa').checked = settings.furiosa; $('tm').checked = settings.tm; $('tm-row').hidden = settings.mode === 'mine';
     $('context').textContent = s?.active ? (s.active.shiny ? '✨ ' : '') + s.active.name + ' · nível da conta ' + fmt(s.player.level) + ' · XP base/h, sem buffs.' : 'Aguardando o pokémon ativo.';
     for (const element of panel.querySelectorAll('.moon-body button,select,input')) element.disabled = busy || !s?.active;
-    $('back').disabled = busy || !snapshot.previous; $('save').disabled = busy || !snapshot.current; $('return').disabled = busy || !snapshot.bookmark;
     panel.classList.toggle('moon-active', busy);
   }
   function observe() {
     const s = state(); if (!s?.player) { render(); return; }
     const id = String(s.player.id || s.player.name || 'conta');
-    if (id !== owner) { owner = id; history = createHuntHistory(readSaved(BASE + ':history:' + owner, {})); settings = { ...defaults(), ...readSaved(BASE + ':settings:' + owner, {}) }; if (!['species','mine'].includes(settings.mode)) settings.mode = 'species'; recommendation = null; $('status').textContent = 'Pronto'; }
-    if (history.observe(descriptor(s))) writeHistory(); render();
+    if (id !== owner) { owner = id; settings = { ...defaults(), ...readSaved(BASE + ':settings:' + owner, {}) }; if (!['species','mine'].includes(settings.mode)) settings.mode = 'species'; recommendation = null; $('status').textContent = 'Pronto'; }
+    render();
   }
   async function read(path) {
     if (!token()) throw Error('Sessão do jogo não encontrada.');
@@ -243,8 +240,6 @@
   }
   async function run(action) { if (busy) return; busy = true; render(); try { await action(); } catch (e) { $('status').textContent = e.message || 'Não foi possível concluir.'; } finally { busy = false; observe(); } }
   $('consult').onclick = () => run(consult); $('best').onclick = () => run(async () => travel(await consult()));
-  $('back').onclick = () => run(() => travel(history.snapshot().previous)); $('return').onclick = () => run(() => travel(history.snapshot().bookmark));
-  $('save').onclick = () => { try { observe(); history.saveCurrent(); writeHistory(); $('status').textContent = 'Hunt de referência salva'; render(); } catch (e) { $('status').textContent = e.message; } };
   for (const key of ['mode','furiosa','tm']) $(key).onchange = () => { settings[key] = key === 'mode' ? $(key).value : $(key).checked; if (owner) localStorage.setItem(BASE + ':settings:' + owner, JSON.stringify(settings)); recommendation = null; $('result').textContent = 'Opções alteradas. Consulte novamente para atualizar a recomendação.'; render(); };
   $('close').onclick = () => { panel.hidden = true; moonDock().sync(); };
   $('minimize').onclick = () => { panel.classList.toggle('moon-collapsed'); $('minimize').textContent = panel.classList.contains('moon-collapsed') ? '+' : '−'; };

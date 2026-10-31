@@ -49,3 +49,7 @@ Os testes Electron cobrem igualdade das propriedades computadas de fundo, borda,
 ## Hunts rápidas 1.0.0
 
 Ponte limitada a consultas XP do recomendador original. Testes de filtro por nível/desbloqueio, correspondência ambígua, histórico persistente por conta, marcador fixo e validação da consulta passaram. Electron 44.6.0: 24 ordens dos quatro scripts, ícones locais e fluxo completo de consultar/ir/voltar/salvar/recusa com fetch simulado. Nenhuma viagem real foi usada nesses testes.
+
+## Separação do retorno
+
+Hunts rápidas 1.1.0 contém apenas melhor XP. Voltar à Hunt 1.0.0 é independente, com seta provisória e reaproveitamento da chave de histórico anterior. Dock com cinco scripts e 120 permutações de carregamento.
