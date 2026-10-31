@@ -59,3 +59,7 @@ Hunts rápidas 1.1.0 contém apenas melhor XP. Voltar à Hunt 1.0.0 é independe
 Testes de requisitos, caminhos, hunts de menor nível, bloqueios e identidade da evolução. Fluxo Electron isolado: consulta sem ação, treino por dois tipos, espera por item, evolução simulada e viagem de XP somente após confirmar nova forma; pausa, desmaio e recusa do servidor. Ícone local Mega Stone, sem requisições de imagem.
 
 Consulta real no Hub: Magmar → Magmortar, Planta 5000/5000, Inseto 4951/5000 e Gelo 5000/5000; prévia sugeriu Área de Burmy nível 1. Somente consulta: sem viagem, troca de Pokémon ou evolução real. Dock validado em 120 ordens com seis scripts.
+
+## Rota Shiny 1.0.0
+
+Teste de vantagem dupla e seleção fixa do time. Electron isolado: prévia sem ações, rotação por tempo, ciclo, troca de ativo antes da viagem, avanço manual, pausa, timeout com nova tentativa e recusa. Todos os pedidos de jogo simulados.

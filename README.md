@@ -85,3 +85,13 @@ O script inicia pausado em uma instalação nova. Uma rota iniciada mantém o pl
 ### Hunt Furiosa no treino (Rota Evolutiva 1.1.0)
 
 Nova opção junto de Evoluir e Melhor XP. Desmarcada por padrão e salva por conta. Marque antes de iniciar para treinar em Hunt Furiosa. Para voltar ao modo normal, pause, desmarque e retome: o script troca o modo mesmo estando na mesma área. A escolha confirma a entrada Furiosa somente nas viagens de treino; a etapa de melhor XP após evoluir continua em hunt normal. As pausas por vida baixa e desmaio permanecem.
+
+### Rota Shiny 1.0.0 — time Rebosteio
+
+[Instalar Rota Shiny](https://raw.githubusercontent.com/panicguy/idlepokemoon/main/PokeMoon-Rota-Shiny-Rebosteio.user.js). Ícone [Red Gyarados Amulet](https://wiki.pokexgames.com/images/4/48/Red_Gyarados_Amulet.png) incorporado localmente. Carregue hunts e time, busque pelo nome da espécie/área e adicione até 30 etapas. A lista usa rolagem interna. Cada etapa tem minutos (1–1440) e Pokémon do time: fixo ou Automático. Você pode reordenar e remover etapas enquanto pausada.
+
+Automático prioriza a maior vantagem ofensiva dos tipos do Pokémon contra os dois tipos da hunt, usando resistência como desempate. Usa a tabela retornada pelo jogo quando disponível, com tabela padrão como alternativa. É uma heurística por tipos, não uma simulação de DPS: não avalia moveset, IV, boosts ou habilidades. Para um resultado específico, fixe o Pokémon na etapa. Não pega Pokémon da box.
+
+A rota troca o ativo com `setActive`, confirma a troca e só então viaja com `selectZone`. Caça em modo normal e repete a fila em ciclo. Próxima hunt agora antecipa a troca. Configurações e etapa ficam salvas por conta; rota nova começa pausada. Pausar preserva combate e captura, fechar só esconde o painel. Falhas temporárias tentam novamente até três vezes; desmaio, vida abaixo de 20%, alteração manual da área/ativo ou recusa do servidor pausam. Use uma única rota de viagem por vez.
+
+Não muda configurações do AutoCatch/Auto-Helper e não garante aparecimento de shinies. Configure a captura separadamente. Executa somente na tela completa, sem Card.
