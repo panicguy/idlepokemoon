@@ -119,3 +119,13 @@ Materiais com grau usam o estoque válido para o pedido, não o total da mochila
 Ao reunir os materiais da etapa, registra Materiais preparados — entrega/luta manuais e passa à próxima selecionada. Quantidades preparadas ficam reservadas na contagem da fila, de forma conservadora inclusive entre graus, para não prometer o mesmo estoque a dois chefes. Entregue os passos manualmente depois de encerrar a coleta; após entregar, carregue a lista novamente e selecione a nova etapa. O script não avança sozinho por etapas que exigem consumir os materiais. Ao terminar a fila, mantém a opção de melhor XP para o último Pokémon usado.
 
 Sem progresso por uma hora em materiais, pausa para conferir a origem; diárias mantêm o limite de três minutos. Seleções anteriores e plano por conta usam a mesma chave de armazenamento.
+
+### Counters da Ranqueada 0.1.0 — planejamento
+
+[Instalar Counters da Ranqueada](https://raw.githubusercontent.com/panicguy/idlepokemoon/main/PokeMoon-Counters-Ranqueada-Rebosteio.user.js). Ícone [Knife Valencia Quest](https://wiki.pokexgames.com/images/7/79/Knife_Valencia_Quest.png) incorporado com transparência. Primeiro teste solicitado: lê as páginas de Top Players até os 20 primeiros e consulta suas fichas públicas. Faz no máximo 20 consultas de perfil, em sequência, com intervalo. Não contorna perfis indisponíveis. Relatório e alvos marcados são salvos localmente por conta.
+
+O time do perfil público pode ser diferente do time usado na ranqueada. Perfis sem time, espécies sem tipos e dados ausentes ficam sinalizados. Qualidade e poder só aparecem quando expostos nos dados consultados. Nos exemplares próprios, mostra a melhor qualidade numérica conhecida nos dados de time/box/candidatos carregados; um inventário parcial não prova que uma espécie está ausente. Qualidade desejada é filtro de planejamento, não condição de captura executada.
+
+Sugere até seis espécies caçáveis nas hunts liberadas para seu nível, combinando frequência, vantagem ofensiva contra os dois tipos e resistência ao retorno. Usa a tabela de tipos do jogo quando disponível, com tabela padrão de alternativa. O tier desempata sugestões de cobertura semelhante; não é cálculo de poder nem simulação de PvP. Indica matchups vulneráveis e inimigos sem cobertura. Não avalia golpes, habilidades, velocidade, IVs ou dano real. Não garante vitórias.
+
+A rota sugerida lista as hunts, o que cada counter cobre e quais alvos precisam de captura/qualidade, com seleção manual. Nesta versão de planejamento, não viaja, não captura, não altera o time e não entra em PvP. A execução da caça/captura e a calculadora de poder ficam para uma etapa posterior, após revisar o plano.

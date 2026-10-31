@@ -79,3 +79,9 @@ Consulta real somente leitura: diária Caça Elétrico reconhecida com 0/250 e h
 Conferidos dados reais somente leitura: Regirock pede 19 Essências de Pedra T5+, contando 8 válidas entre 598 totais; fontes SR normal ou S shiny. Ticket do Eon exige Dragão em Hoenn; Relíquia de Unova exige região Unova. Testes de grau/tier, fonte shiny, reservas, tipos/regiões e fluxo completo sem bossQuestEntregar, bossQuestAceitar nem luta.
 
 Leitura no Hub atualizado confirmou Regirock 8/19 Essências de Pedra T5+, Regice 0/19 Gelo T5+ e Registeel 2/19 Terrestre T5+ e 13/13 Aço T5+. A seleção anterior foi preservada; nenhuma etapa de chefe foi entregue e nenhuma batalha iniciada.
+
+## Counters da Ranqueada 0.1.0
+
+Testes de identidade de perfil, tipos duplos, frequência, qualidade ausente, filtro de hunts liberadas e qualidade de exemplares próprios. Electron isolado: paginação dos 20 primeiros, 20 leituras de perfil, perfil indisponível, relatório parcial, cancelamento preservando o anterior e nenhuma mutação de jogo.
+
+Consulta real somente leitura: 20/20 fichas públicas, 45 espécies com tipos reconhecidos. Os perfis expõem poder, mas não qualidade; o painel mostrou qualidade não informada. A sugestão foi criada sem viajar, capturar, alterar equipe ou entrar em ranqueada. Dock validado em 120 ordens com nove scripts.

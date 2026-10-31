@@ -56,3 +56,8 @@ CHEFES: selecione a etapa ja aceita. Coleta os materiais validos (inclusive
 grau minimo) e para antes de entregar o passo ou lutar. Para materiais que
 so caem de shiny no tier disponivel, o painel avisa. Ao finalizar, entregue
 manualmente e atualize a lista para preparar a proxima etapa.
+
+COUNTERS DA RANQUEADA (Knife Valencia): Analisar top 20 e criar rota faz apenas
+leituras. Revise as sugestoes e marque os alvos. O time publico pode diferir do
+time de PvP. Qualidade ausente nao e deduzida do poder. Nesta fase nao executa
+capturas, viagens ou trocas de equipe; calculadora de poder fica para depois.
