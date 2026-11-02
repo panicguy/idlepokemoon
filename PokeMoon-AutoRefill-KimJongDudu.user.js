@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PokeMoon AutoRefill by KimJongDudu
 // @namespace    https://github.com/panicguy/idlepokemoon
-// @version      1.3.0
+// @version      1.3.1
 // @description  Reabastece Pokebolas e Potions com estoque-alvo; venda opcional do loot antes da compra. Independente do AutoCatch.
 // @match        https://idlepokemoon.com.br/play*
 // @match        https://www.idlepokemoon.com.br/play*
@@ -160,7 +160,10 @@
   const action = (name, payload) => window.__idleMoonCard
     ? window.__idleMoonCard.action(name, payload) : window.Y(name, payload);
   const stock = (i) => {
-    const n = (i.kind === 'ball' ? state()?.balls : state()?.potions)?.[i.item];
+    const inventory = i.kind === 'ball' ? state()?.balls : state()?.potions;
+    if (!inventory || typeof inventory !== 'object' || Array.isArray(inventory)) return null;
+    // Like the native shop: an absent entry in a valid inventory means zero.
+    const n = Object.prototype.hasOwnProperty.call(inventory, i.item) ? inventory[i.item] : 0;
     return Number.isSafeInteger(n) && n >= 0 ? n : null;
   };
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -183,7 +186,7 @@
         badge.style.cssText = 'padding:10px;border:1px solid #71618c;border-radius:8px;font:12px Segoe UI;color:#f3d98a;background:#11152b';
         document.body.append(badge);
       }
-      if (badge) badge.textContent = 'AutoRefill ' + (settings.enabled ? 'ligado' : 'desligado') + ' · ' + statusText + (state()?.potions ? ' · Ultimate: ' + (state().potions.ultimate ?? '—') : ' · aguardando inventário');
+      if (badge) badge.textContent = 'AutoRefill ' + (settings.enabled ? 'ligado' : 'desligado') + ' · ' + statusText + (state()?.potions ? ' · ' + ITEMS.filter(i => validConfig(i)).map(i => i.name + ': ' + (stock(i) ?? '—')).join(' · ') : ' · aguardando inventário') + (lastSuccess !== '—' ? ' · Última compra: ' + lastSuccess : '');
       return;
     }
     if (!root) return;
@@ -220,6 +223,7 @@
     if (!settings.enabled || busy || Date.now() < nextRun) return;
     if (!window.__idleMoonCard && typeof window.Y !== 'function') return log('Aguardando função do jogo Y()...');
     if (!state()?.balls || !state()?.potions) return log('Aguardando inventário do jogo...');
+    if (ITEMS.some(i => validConfig(i) && stock(i) === null)) return log('Aguardando estoque válido dos itens configurados...');
     const needs = ITEMS.filter(i => {
       const c = validConfig(i), have = stock(i);
       return c && have !== null && have < c.min;

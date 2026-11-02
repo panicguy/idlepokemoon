@@ -16,7 +16,7 @@ function harness({ enabled = true, card = false, store = new Map(), fail = false
     document: { body: { append: el => nodes.set(el.id, el) }, getElementById: id => id === 'kjd-autorefill' ? {} : nodes.get(id), createElement: () => ({ style: {} }) },
     setInterval: fn => { interval = fn; return 1; }, setTimeout: fn => { fn(); return 1; }
   });
-  const action = async (name, payload) => { calls.push({ name, payload }); if (fail) throw Error('Servidor recusou'); if (name === 'buy') state.potions.ultimate += payload.qty; return { state }; };
+  const action = async (name, payload) => { calls.push({ name, payload }); if (fail) throw Error('Servidor recusou'); if (name === 'buy') state.potions[payload.item] = (state.potions[payload.item] || 0) + payload.qty; return { state }; };
   if (card) context.window.__idleMoonCard = { state, action };
   else { context.window.Y = action; context.seed = state; vm.runInContext('let K = seed;', context); }
   vm.runInContext(script, context);
@@ -34,6 +34,8 @@ function harness({ enabled = true, card = false, store = new Map(), fail = false
   const rejected = harness({ card: true, fail: true }); await rejected.context.window.__idleMoonRefillTick();
   assert.equal(JSON.parse(rejected.store.get(key)).enabled, false, 'errors persist disabled state');
   const errorReload = harness({ card: true, store: rejected.store }); await errorReload.context.window.__idleMoonRefillTick(); assert.equal(errorReload.calls.length, 0);
+  for (const cardMode of [false, true]) { const empty = harness({card:cardMode}); empty.state.potions={}; await empty.context.window.__idleMoonRefillTick();assert.equal(empty.calls.length,2,'zero omitted from inventory must trigger refill');assert.equal(empty.calls[1].name,'buy');assert.equal(empty.state.potions.ultimate,1);const absent=harness({card:cardMode});delete absent.state.potions;await absent.context.window.__idleMoonRefillTick();assert.equal(absent.calls.length,0,'missing entire inventory must not trigger purchases');const invalid=harness({card:cardMode});invalid.state.potions.ultimate='0';await invalid.context.window.__idleMoonRefillTick();assert.equal(invalid.calls.length,0,'invalid stock must not be treated as zero');}
+  console.log('PASS: sparse zero inventory refills in Card and game; absent inventory and invalid counts do not buy.');
   const bridgeCalls = [];
   const bridgeContext = vm.createContext({ window: {}, location: { href: 'https://idlepokemoon.com.br/eco.html', origin: 'https://idlepokemoon.com.br' }, URL, Headers, AbortSignal, localStorage: { getItem: () => 'fixture-token' } });
   bridgeContext.window.fetch = async (input, options) => { bridgeCalls.push({ input, options }); const body = String(input).includes('/api/state') ? { state: { balls: {}, potions: {}, boxVer: 9 } } : { state: { balls: {}, potions: { ultimate: 51 }, boxVer: 10 } }; return { ok: true, status: 200, clone: () => ({ json: async () => body }), json: async () => body }; };
@@ -60,3 +62,4 @@ function harness({ enabled = true, card = false, store = new Map(), fail = false
   } finally { fs.unlinkSync(fixtureFile); }
   console.log('PASS: reload resume, persisted cooldown, Card sell/buy with one-unit budget, disabled/error persistence, existing session reuse, no extra polling. All requests simulated.');
 })().catch(e => { console.error(e); process.exitCode = 1; });
+
