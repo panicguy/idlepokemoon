@@ -23,6 +23,8 @@ jobs:
       - name: Test scripts
         shell: pwsh
         run: |
+          node desktop-mod/test-diamond-sniper.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Diamond sniper tests failed' }
           node desktop-mod/test-automacoes.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Automation tests failed' }
           node desktop-mod/test-refill-card.cjs
@@ -46,6 +48,8 @@ jobs:
         run: |
           npm install --no-save --package-lock=false electron@44.6.0
           if ($LASTEXITCODE -ne 0) { throw 'Electron setup failed' }
+          & .\node_modules\.bin\electron.cmd desktop-mod/test-diamond-ui-electron.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Diamond UI tests failed' }
           & .\node_modules\.bin\electron.cmd desktop-mod/test-counter-rankers-electron.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Counter ranking flow tests failed' }
           & .\node_modules\.bin\electron.cmd desktop-mod/test-quests-electron.cjs
@@ -75,6 +79,8 @@ jobs:
       - name: Test automation behavior
         shell: pwsh
         run: |
+          node desktop-mod/test-diamond-sniper.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Diamond sniper tests failed' }
           node desktop-mod/test-automacoes.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Automation tests failed' }
           node desktop-mod/test-refill-card.cjs

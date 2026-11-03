@@ -21,7 +21,7 @@
     for (const s of scripts || []) {
       box.append(h('div.auto-script',
         h('b', s.name + (s.version ? ' · ' + s.version : '')),
-        ['autorefill-v1', 'autocatch-v1'].includes(s.cardSupport) ? h('small', 'Compatível com Card · mantém o estado após recarregar') : null,
+        ['autorefill-v1', 'autocatch-v1','market-v1'].includes(s.cardSupport) ? h('small', 'Compatível com Card · mantém o estado após recarregar') : null,
         h('small.auto-url', s.url),
         h('div.visao', [true, false].map(on => h('button' + (s.enabled === on ? '.on' : ''), { disabled: busy, onclick: () => request({ type: 'toggle', id: s.id, enabled: on }) }, on ? 'Ligado' : 'Desligado'))),
         h('div.visao', [0, 1, 2].map(i => h('button' + (s.accounts.includes(i) ? '.on' : ''), { disabled: busy, onclick: () => request({ type: 'accounts', id: s.id, accounts: s.accounts.includes(i) ? s.accounts.filter(n => n !== i) : [...s.accounts, i] }) }, window.PAINEL.nomeConta(i)))),

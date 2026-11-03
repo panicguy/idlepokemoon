@@ -98,7 +98,8 @@ function cardBridge() {
     let actionQueue = Promise.resolve();
     const performAction = async (action, payload) => {
       if (!bridge.state || !bridge.sid) throw Error('Aguardando sessão e inventário do Card.');
-      if (!['buy', 'sellLoot', 'throwBall'].includes(action)) throw Error('Ação indisponível no Card.');
+      if (!['buy', 'sellLoot', 'throwBall','mgOp'].includes(action)) throw Error('Ação indisponível no Card.');
+      if(action==='mgOp' && (!payload || payload.op!=='buyQty'||payload.cat!=='diamond'||payload.currency!=='gold'||payload.item!==''||payload.tier!==null||!Number.isSafeInteger(payload.qty)||payload.qty<1||payload.qty>1000||!Number.isSafeInteger(payload.maxUnit)||payload.maxUnit<1||Object.keys(payload).some(k=>!['op','cat','currency','item','tier','qty','maxUnit'].includes(k))))throw Error('Compra de diamantes inválida no Card.');
       const token = localStorage.getItem('pmi_token');
       if (!token) throw Error('Sessão do Card expirou.');
       const response = await original('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Sid': bridge.sid }, body: JSON.stringify({ token, action, bver: bridge.state.boxVer || 0, ...payload }), signal: AbortSignal.timeout(15000) });
@@ -151,6 +152,11 @@ function create({ file, views, origin, count = 3, fetchScript = download, preset
       fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(scripts, null, 2), { flag: 'wx' });
     }
   }
+  const diamondModule=require('./diamond-sniper');
+  const diamondAllowed=i=>scripts.some(s=>s.enabled&&s.accounts.includes(i)&&s.marketSupport==='diamonds-v1');
+  const diamonds=diamondModule.create({file:path.join(path.dirname(file),'diamond-sniper.json'),views,origin,allowed:diamondAllowed});
+  const diamondPolling=new Set();
+  async function pollDiamonds(wc){if(diamondPolling.has(wc.id))return;diamondPolling.add(wc.id);try{const p=await wc.executeJavaScript('window.__idleMoonDiamonds && window.__idleMoonDiamonds.pending || null',false);if(p&&typeof p.id==='string'&&/^[A-Za-z0-9-]{1,64}$/.test(p.id)){const result=diamonds.command(p.command);if(!wc.isDestroyed())await wc.executeJavaScript('window.__idleMoonDiamonds && window.__idleMoonDiamonds.settle('+JSON.stringify(p.id)+','+JSON.stringify(result)+')',false);}}finally{diamondPolling.delete(wc.id);}}
   const list = () => scripts.map(({ code, dependencies, meta, ...s }) => ({ ...s, version: (meta.version || [''])[0], error: errors.get(s.id) || '' }));
   function save() { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file + '.tmp', JSON.stringify(scripts, null, 2)); fs.renameSync(file + '.tmp', file); }
   async function prepare(url) {
@@ -161,7 +167,8 @@ function create({ file, views, origin, count = 3, fetchScript = download, preset
     }
     const capability = (meta['idlemoon-card'] || [])[0];
     return { name: (meta.name || [new URL(url).pathname.split('/').pop()])[0], url, code, meta,
-      dependencies: deps.join('\n;\n'), cardSupport: ['autorefill-v1', 'autocatch-v1'].includes(capability) ? capability : undefined,
+      dependencies: deps.join('\n;\n'), cardSupport: ['autorefill-v1', 'autocatch-v1', 'market-v1'].includes(capability) ? capability : undefined,
+      marketSupport: (meta['idlemoon-market'] || [])[0] === 'diamonds-v1' ? 'diamonds-v1' : undefined,
       huntsSupport: (meta['idlemoon-hunts'] || [])[0] === 'shortcut-v1' ? 'shortcut-v1' : undefined };
   }
   function reload(accounts) { for (const i of accounts) { const wc = views()[i]?.webContents; if (wc && !wc.isDestroyed()) { try { if (new URL(wc.getURL()).origin === origin) wc.reload(); } catch (_) {} } } }
@@ -171,13 +178,13 @@ function create({ file, views, origin, count = 3, fetchScript = download, preset
     try { const u = new URL(url); if (u.origin !== origin || !['/play', '/eco.html'].includes(u.pathname)) return; card = u.pathname === '/eco.html'; } catch (_) { return; }
     for (const s of scripts) {
       if (!s.enabled || !s.accounts.includes(i)) continue;
-      if (card && !['autorefill-v1', 'autocatch-v1'].includes(s.cardSupport)) continue;
+      if (card && !['autorefill-v1', 'autocatch-v1', 'market-v1'].includes(s.cardSupport)) continue;
       const run = (s.meta['run-at'] || ['document-idle'])[0];
       if ((phase === 'end') !== (run === 'document-end')) continue;
       const matchUrl = card ? origin + '/play' : url;
       if ((s.meta.match || s.meta.include) && ![...(s.meta.match || []).map(p => matches(p, matchUrl)), ...(s.meta.include || []).map(p => matches(p, matchUrl, true))].some(Boolean)) continue;
       if ((s.meta['exclude-match'] || []).some(p => matches(p, matchUrl)) || (s.meta.exclude || []).some(p => matches(p, matchUrl, true))) continue;
-      try { await wc.executeJavaScript((card ? cardBridge() : '') + (s.huntsSupport === 'shortcut-v1' ? huntsBridge() : '') + runtime(s), false); errors.delete(s.id); } catch (e) { errors.set(s.id, 'Conta ' + (i + 1) + ': ' + e.message); }
+      try { await wc.executeJavaScript((card ? cardBridge() : '') + (s.huntsSupport === 'shortcut-v1' ? huntsBridge() : '') + (s.marketSupport === 'diamonds-v1' ? diamondModule.bridge(i) : '') + runtime(s), false); errors.delete(s.id); } catch (e) { errors.set(s.id, 'Conta ' + (i + 1) + ': ' + e.message); }
     }
   }
   async function request(p) {
@@ -233,13 +240,15 @@ function create({ file, views, origin, count = 3, fetchScript = download, preset
       const relevant = scripts.filter(s => s.enabled && s.accounts.includes(i));
       let pathname;
       try { const u = new URL(wc.getURL()); if (u.origin !== origin) return; pathname = u.pathname; } catch (_) { return; }
+      if(relevant.some(s=>s.marketSupport==='diamonds-v1')){try{await pollDiamonds(wc);}catch(_){}}
       if (pathname === '/play' && relevant.some(s => s.huntsSupport === 'shortcut-v1')) {
         ticking.add(wc.id); try { await pollHunts(wc, i); } catch (_) {} finally { ticking.delete(wc.id); } return;
       }
-      if (pathname !== '/eco.html' || !relevant.some(s => ['autorefill-v1', 'autocatch-v1'].includes(s.cardSupport))) return;
+      if (pathname !== '/eco.html' || !relevant.some(s => ['autorefill-v1', 'autocatch-v1', 'market-v1'].includes(s.cardSupport))) return;
       ticking.add(wc.id);
       try { await wc.executeJavaScript('Promise.all([window.__idleMoonRefillTick && window.__idleMoonRefillTick(), window.__idleMoonCatchTick && window.__idleMoonCatchTick()]).then(() => undefined)', false); } catch (_) {} finally { ticking.delete(wc.id); }
     }));
+    await diamonds.tick();
   }
   return { inject, tickCard, request: p => { const result = queue.then(() => request(p)); queue = result.catch(() => {}); return result; } };
 }
