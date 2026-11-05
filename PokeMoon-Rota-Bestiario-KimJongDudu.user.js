@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Rota do Bestiário
 // @namespace    local.pokemoon.bestiario
-// @version      1.1.0
+// @version      1.1.1
 // @description  Visita hunts liberadas e captura uma espécie normal faltante por vez.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -22,6 +22,8 @@
   let catalog = null, zones = [], allowed = new Set(), lastCatalog = 0;
   let lastStateAt = Date.now(), startedAt = 0, startBalls = 0;
   const completed = new Set();
+  let settingsOwner = '', routeFuriosa = false;
+  const settingsKey = () => 'ipm-rota-bestiario-settings-v1:' + settingsOwner;
   const totalBalls = s => Object.values(s.balls || {}).reduce((n, v) => n + Math.max(0, Number(v) || 0), 0);
 
 
@@ -138,6 +140,7 @@
       <div class="moon-metrics"><div class="moon-metric"><small>Concluídas</small><strong data-counter>0</strong></div><div class="moon-metric"><small>Espécies por vez</small><strong>1</strong></div></div>
       <label class="moon-line"><span>⏱ Minutos por hunt</span><input data-min type="number" min="1" max="1440" value="10"></label>
       <label class="moon-line"><span>◉ Bolas por hunt</span><input data-balls type="number" min="1" max="1000" value="60"></label>
+      <label class="moon-line"><span>Hunt Furiosa</span><input data-furiosa type="checkbox"></label>
       <button type="button" data-start class="moon-go">▶ Iniciar / retomar</button>
       <button type="button" data-stop class="moon-stop">Ⅱ Pausar rota</button>
       <div data-status role="status" class="moon-detail">Pronto. Nenhuma ação iniciada.</div>
@@ -152,7 +155,23 @@
   moonDock().drag(panel, panel.querySelector('[data-handle]'), { storageKey: 'ipm-rota-bestiario-pos-v103' });
   const status = panel.querySelector('[data-status]');
   const startButton = panel.querySelector('[data-start]');
-  function say(message) { panel.classList.toggle('moon-active', running); status.textContent = message;panel.querySelector('[data-counter]').textContent=completed.size;panel.querySelector('[data-mode]').textContent=running?'Ativa':'Pausada'; }
+  const furiosaInput = panel.querySelector('[data-furiosa]');
+  function bindSettings() {
+    const p = state()?.player, owner = p && String(p.id || p.name || p.nome || '');
+    if (!owner || owner === settingsOwner) return;
+    settingsOwner = owner;
+    try { furiosaInput.checked = JSON.parse(localStorage.getItem(settingsKey()) || '{}').furiosa === true; }
+    catch (_) { furiosaInput.checked = false; }
+  }
+  furiosaInput.onchange = () => {
+    const checked = furiosaInput.checked;
+    bindSettings();
+    if (running || busy || !settingsOwner) return;
+    furiosaInput.checked = checked;
+    localStorage.setItem(settingsKey(), JSON.stringify({furiosa:furiosaInput.checked}));
+  };
+  bindSettings();
+  function say(message) { panel.classList.toggle('moon-active', running); status.textContent = message;panel.querySelector('[data-counter]').textContent=completed.size;panel.querySelector('[data-mode]').textContent=running?(routeFuriosa?'Ativa · Furiosa':'Ativa'):'Pausada';furiosaInput.disabled=running||busy; }
   function numberSetting(selector, max) {
     const value = Number(panel.querySelector(selector).value);
     if (!Number.isFinite(value) || value < 1 || value > max) throw new Error('Preencha limites válidos no painel.');
@@ -209,6 +228,9 @@
     const s = state();
     return s && s.inst && Number.isInteger(s.inst.zona) ? s.inst.zona : s && s.zone && s.zone.index;
   }
+  function atDestination() {
+    return !!target && currentZone() === target.index && (state()?.inst?.furiosa === true) === routeFuriosa;
+  }
   async function pause(message) {
     running = false;
     generation++;
@@ -236,15 +258,16 @@
     if (!target) return pause('Concluído: nenhuma espécie faltante elegível nas hunts liberadas.');
     startedAt = Date.now();
     startBalls = totalBalls(s);
-    say('Indo para ' + target.name + '…');
+    say('Indo para ' + target.name + (routeFuriosa ? ' · Furiosa' : '') + '…');
     if (!running) return;
-    if (currentZone() !== target.index) await action('selectZone', {index:target.index, furiosa:false, confirmo:false, naoPerguntar:false});
+    if (!atDestination()) await action('selectZone', {index:target.index, furiosa:routeFuriosa, confirmo:false, naoPerguntar:false});
     // A resposta da troca precisa identificar a instância antes de capturar.
     if (!running) return;
-    if (currentZone() !== target.index) throw new Error('O jogo não confirmou a chegada à hunt.');
+    if (!atDestination()) throw new Error('O jogo não confirmou a chegada à hunt no modo escolhido.');
     say('Caçando: ' + target.name + '\nAguardando 1 captura normal. Concluídas nesta sessão: ' + completed.size);
   }
   async function tick() {
+    bindSettings();
     if (!running || busy || stopping || Date.now() < retryAt) return;
     busy = true;
     try {
@@ -257,7 +280,7 @@
       }
       const s = checkSafety();
       if (!target) { await next(); return; }
-      if (currentZone() !== target.index) throw new Error('Hunt alterada fora do script.');
+      if (!atDestination()) throw new Error('Hunt ou modo Furiosa alterado fora do script.');
       if (!s.auto.catch) throw new Error('Auto-Catch foi desligado no jogo.');
       if (Date.now() - lastCatalog >= 8000) {
         await refresh();
@@ -278,11 +301,11 @@
     } catch (error) {
       if (error.transient || error.name === 'TimeoutError' || error instanceof TypeError) {
         retryAt = Date.now() + 5000;
-        if (target && currentZone() !== target.index) target = null;
+        if (target && !atDestination()) target = null;
         say('Aguardando para tentar novamente: ' + error.message + '\nRota ativa. Auto-Catch preservado.');
       } else await pause(error.message);
     }
-    finally { busy = false; }
+    finally { busy = false; furiosaInput.disabled = running; }
   }
   startButton.onclick = async () => {
     if (busy || running || stopping) return;
@@ -294,6 +317,8 @@
         throw new Error('Interface do jogo indisponível. Recarregue a página.');
       }
       numberSetting('[data-min]',1440); numberSetting('[data-balls]',1000);
+      bindSettings();
+      routeFuriosa = furiosaInput.checked === true;
       checkSafety();
       say('Consultando hunts e bestiário…');
       await refresh(true);
@@ -311,7 +336,7 @@
       retryAt = 0;
       say('Rota ativa. Preparando a próxima hunt…');
     } catch (error) { await pause(error.message); }
-    finally { busy = false; startButton.disabled = false; }
+    finally { busy = false; startButton.disabled = false; furiosaInput.disabled = running; }
   };
   panel.querySelector('[data-stop]').onclick = () => {
     // Bloqueia o restante de qualquer fluxo pendente imediatamente.
