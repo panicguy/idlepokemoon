@@ -33,8 +33,8 @@ let server;
     const results=await win.webContents.executeJavaScript(`(async()=>{
       const check=(v,m)=>{if(!v)throw Error(m)};
       const dock=document.querySelector('#kjd-moon-dock');check(dock,'dock missing');check(document.querySelectorAll('#kjd-moon-dock').length===1,'duplicate dock');
-      check(dock.children.length===9,'nine buttons');check(document.querySelectorAll('#kjd-moon-dock-style').length===1,'one shared style');
-      const buttons=[...dock.querySelectorAll('button')],panes=[...document.querySelectorAll('[data-kjd-panel]')];check(panes.length===9&&panes.every(p=>p.hidden),'panels initially hidden');
+      check(dock.querySelectorAll('[data-kjd-button]').length===9,'nine buttons');check(document.querySelectorAll('#kjd-moon-dock-style').length===1,'one shared style');
+      const buttons=[...dock.querySelectorAll('[data-kjd-button]')],panes=[...document.querySelectorAll('[data-kjd-panel]')];check(panes.length===9&&panes.every(p=>p.hidden),'panels initially hidden');
       check(document.querySelectorAll('#kjd-moon-panel-theme').length===1,'one shared panel theme');
       for(const property of ['backgroundImage','borderColor','borderRadius','fontFamily'])check(new Set(panes.map(p=>getComputedStyle(p)[property])).size===1,'consistent theme: '+property);
       check(buttons.map(b=>b.dataset.kjdButton).join(',')==='counters,quests,shiny,evolution,autocatch,autorefill,bestiario,hunts,huntreturn','stable button order');
@@ -42,7 +42,7 @@ let server;
       const saved=localStorage.getItem('kim-pokemoon-autocatch-settings')+'|'+localStorage.getItem('pm-autorefill-kjd-v1');
       for(const button of buttons){button.click();await Promise.resolve();const visible=panes.filter(p=>!p.hidden);check(visible.length===1&&visible[0].dataset.kjdPanel===button.dataset.kjdButton,'exclusive panel');check(button.getAttribute('aria-expanded')==='true','expanded status');button.click();await Promise.resolve();check(panes.every(p=>p.hidden),'toggle closes');}
       for(const button of buttons){button.click();const pane=panes.find(p=>p.dataset.kjdPanel===button.dataset.kjdButton);const close=pane.querySelector('[data-close]')||[...pane.querySelectorAll('button')].find(b=>(b.title||'').startsWith('Fechar'));check(close,'close button');close.click();await Promise.resolve();check(!button.classList.contains('active')&&button.getAttribute('aria-expanded')==='false','close sync');}
-      const first=buttons[0];first.click();const pane=panes.find(p=>p.dataset.kjdPanel===first.dataset.kjdButton);window.__kjdMoonDockV2.register(first.dataset.kjdButton,first.title,first.querySelector('canvas'),pane);check(dock.children.length===9,'registration deduplicated');
+      const first=buttons[0];first.click();const pane=panes.find(p=>p.dataset.kjdPanel===first.dataset.kjdButton);window.__kjdMoonDockV2.register(first.dataset.kjdButton,first.title,first.querySelector('canvas'),pane);check(dock.querySelectorAll('[data-kjd-button]').length===9,'registration deduplicated');
       pane.style.left='99999px';pane.style.top='99999px';window.__kjdMoonDockV2.clamp(pane);const rect=pane.getBoundingClientRect();check(rect.right<=innerWidth&&rect.bottom<=innerHeight,'opening clamp');
       check(saved===localStorage.getItem('kim-pokemoon-autocatch-settings')+'|'+localStorage.getItem('pm-autorefill-kjd-v1'),'UI changed automation settings');check(window.__testActions===0,'unexpected action');
       return{icons,buttons:buttons.length,panes:panes.length};
@@ -62,7 +62,7 @@ let server;
     await win.webContents.executeJavaScript(`(()=>{window.dispatchEvent(new Event('resize'));const p=document.querySelector('[data-kjd-panel]:not([hidden])');const r=p.getBoundingClientRect();if(r.left<0||r.top<0||r.right>innerWidth+1||r.bottom>innerHeight+1)throw Error('Resize outside viewport');})()`);
     // Replay all scripts as if reinjected: guards must prevent duplicate panels/buttons.
     for(const file of files)await win.webContents.executeJavaScript(fs.readFileSync(path.join(root,file),'utf8'));
-    const counts=await win.webContents.executeJavaScript(`({buttons:document.querySelectorAll('#kjd-moon-dock button').length,panes:document.querySelectorAll('[data-kjd-panel]').length,actions:window.__testActions})`);
+    const counts=await win.webContents.executeJavaScript(`({buttons:document.querySelectorAll('#kjd-moon-dock [data-kjd-button]').length,panes:document.querySelectorAll('[data-kjd-panel]').length,actions:window.__testActions})`);
     assert.deepEqual(counts,{buttons:9,panes:9,actions:0});console.log('PASS order '+orders[order].join(',')+': '+JSON.stringify(results));
   }
   await win.loadURL('http://127.0.0.1:'+port+'/?scenario=hunts');

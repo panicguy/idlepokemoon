@@ -59,6 +59,8 @@ jobs:
           & .\node_modules\.bin\electron.cmd desktop-mod/test-evolution-electron.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Evolution flow tests failed' }
           & .\node_modules\.bin\electron.cmd desktop-mod/test-ui-electron.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & .\node_modules\.bin\electron.cmd desktop-mod/test-dock-fold-electron.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Electron UI tests failed' }
       - uses: actions/upload-artifact@v4
         if: always()

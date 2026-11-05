@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon Rota Evolutiva by KimJongDudu
 // @namespace    https://github.com/panicguy/idlepokemoon
-// @version      1.1.0
+// @version      1.1.1
 // @description  Treina os tipos da missão em hunts fáceis, evolui e viaja para melhor XP após confirmar a nova forma.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -30,6 +30,57 @@
       css.textContent = '#kjd-moon-dock{position:fixed;left:8px;top:50%;transform:translateY(-50%);z-index:2147483646;display:flex;flex-direction:column;gap:6px;padding:7px 5px;border:2px solid #785a28;border-radius:10px;background:#14100add;backdrop-filter:blur(4px);max-height:calc(100vh - 16px);overflow-y:auto;box-sizing:border-box}#kjd-moon-dock button{width:36px;height:36px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:2px;border:1px solid transparent;border-radius:8px;background:transparent;cursor:pointer;font:23px system-ui;color:#ffe2a0}#kjd-moon-dock button:hover{background:#ffffff22}#kjd-moon-dock button.active{background:#d5aa4533;border-color:#d5aa45}#kjd-moon-dock canvas{width:29px;height:29px;object-fit:contain;image-rendering:pixelated;pointer-events:none}[data-kjd-panel]{box-sizing:border-box!important;max-width:calc(100vw - 16px)!important;max-height:calc(100vh - 16px)!important;overflow-y:auto!important}[data-kjd-panel][hidden]{display:none!important}#ipm-rota-best input{box-sizing:border-box;min-width:0}#ipm-rota-best label{min-width:0}';
       (document.head || document.documentElement).appendChild(css);
     }
+    const foldKey = 'kjd-moon-dock-fold-v1';
+    let folded = false, anchor = null, motion = 0, animations = [];
+    try { const saved = JSON.parse(localStorage.getItem(foldKey) || '{}'); folded = saved.folded === true; if (Number.isFinite(saved.top)) anchor = saved.top; } catch (_) {}
+    const foldStyle = document.createElement('style');
+    foldStyle.textContent = '#kjd-moon-dock [data-dock-fold]{order:-1;position:sticky;top:0;z-index:2;background:#211d15;border-color:#806b3c;font-size:20px}#kjd-moon-dock [data-dock-fold]:focus-visible{outline:2px solid #ffe2a0;outline-offset:-2px}#kjd-moon-dock button[hidden]{display:none!important}#kjd-moon-dock.is-folding{overflow:hidden}#kjd-moon-dock [data-dock-chevron]{display:block;transition:transform .28s ease}#kjd-moon-dock.is-folded [data-dock-chevron]{transform:rotate(180deg)}@media(prefers-reduced-motion:reduce){#kjd-moon-dock [data-dock-chevron]{transition:none}}';
+    (document.head || document.documentElement).appendChild(foldStyle);
+    const foldButton = document.createElement('button');
+    foldButton.type = 'button'; foldButton.dataset.dockFold = ''; foldButton.innerHTML = '<span data-dock-chevron aria-hidden="true">⌃</span>';
+    dock.prepend(foldButton);
+    function foldLabel() {
+      foldButton.title = folded ? 'Expandir scripts' : 'Recolher scripts';
+      foldButton.setAttribute('aria-label', foldButton.title); foldButton.setAttribute('aria-expanded', String(!folded));
+      dock.classList.toggle('is-folded', folded);
+    }
+    function pin(top) {
+      anchor = Math.max(8, Math.min(top, Math.max(8, innerHeight - dock.getBoundingClientRect().height - 8)));
+      dock.style.top = anchor + 'px'; dock.style.transform = 'none';
+    }
+    async function setFolded(value, animate = true) {
+      const turn = ++motion, start = dock.getBoundingClientRect();
+      animations.forEach(a => a.cancel()); animations = [];
+      folded = value === true; foldLabel();
+      const buttons = [...entries.values()].map(e => e.button);
+      if (folded) { document.querySelectorAll('[data-kjd-panel]').forEach(p => { p.hidden = true; }); sync(); }
+      buttons.forEach(b => { b.hidden = false; b.inert = folded; });
+      dock.style.height = 'auto';
+      const endHeight = folded ? 54 : dock.getBoundingClientRect().height;
+      dock.style.height = start.height + 'px';
+      pin(Math.min(start.top, innerHeight - endHeight - 8));
+      dock.classList.add('is-folding');
+      const duration = animate && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 320 : 0;
+      if (duration) {
+        const opts = {duration,easing:'cubic-bezier(.22,.7,.25,1)',fill:'both'};
+        animations.push(dock.animate([{height:start.height+'px'},{height:endHeight+'px'}],opts));
+        buttons.forEach((b,i) => {
+          const hidden = {opacity:0,transform:'translateY(-'+Math.min(240,(i+1)*28)+'px)'}, shown = {opacity:1,transform:'translateY(0)'};
+          animations.push(b.animate(folded ? [shown,hidden] : [hidden,shown],opts));
+        });
+        await Promise.race([Promise.allSettled(animations.map(a => a.finished)), new Promise(resolve => setTimeout(resolve, duration + 60))]);
+      }
+      if (turn !== motion) return;
+      buttons.forEach(b => { b.hidden = folded; b.inert = folded; });
+      dock.style.height = folded ? '54px' : 'auto';
+      animations.forEach(a => a.cancel()); animations = [];
+      dock.classList.remove('is-folding'); pin(anchor ?? start.top);
+      try { localStorage.setItem(foldKey, JSON.stringify({folded,top:anchor})); } catch (_) {}
+    }
+    foldButton.onclick = () => { void setFolded(!folded); };
+    foldLabel();
+    if (anchor !== null) pin(anchor);
+    if (folded) dock.style.height = '54px';
     function clamp(pane, x, y) {
       if (pane.hidden) return;
       const rect = pane.getBoundingClientRect();
@@ -61,7 +112,9 @@
       };
       const observer = new MutationObserver(sync); observer.observe(pane, { attributes: true, attributeFilter: ['hidden'] });
       entries.set(id, { pane, button, observer }); dock.appendChild(button); sync();
+      button.hidden = folded; button.inert = folded;
       for (const key of ['autocatch', 'autorefill', 'bestiario']) { const item = entries.get(key); if (item) dock.appendChild(item.button); }
+      if (anchor !== null && !dock.classList.contains('is-folding')) pin(anchor);
       return button;
     }
     function drag(pane, handle, options = {}) {
@@ -86,7 +139,7 @@
       const stop = e => { if (!active || active.id !== e.pointerId) return; active = null; clamp(pane); save(); };
       handle.addEventListener('pointerup', stop); handle.addEventListener('pointercancel', stop); handle.addEventListener('lostpointercapture', stop);
     }
-    window.addEventListener('resize', () => { for (const { pane } of entries.values()) clamp(pane); });
+    window.addEventListener('resize', () => { for (const { pane } of entries.values()) clamp(pane); if (anchor !== null) pin(anchor); });
     window.__kjdMoonDockV2 = { register, drag, clamp, sync };
     return window.__kjdMoonDockV2;
   }
