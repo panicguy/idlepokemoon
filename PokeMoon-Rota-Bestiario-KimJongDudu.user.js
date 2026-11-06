@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Rota do Bestiário
 // @namespace    local.pokemoon.bestiario
-// @version      1.1.2
+// @version      1.1.3
 // @description  Visita hunts liberadas e captura uma espécie normal faltante por vez.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -103,6 +103,45 @@
       try { localStorage.setItem(foldKey, JSON.stringify({folded,top:anchor})); } catch (_) {}
     }
     foldButton.onclick = () => { void setFolded(!folded); };
+    // Drag the toggle itself; only a stationary click folds the dock.
+    const positionKey = 'kjd-moon-dock-position-v1';
+    let dockDrag = null, suppressClick = false;
+    function placeDock(x, y) {
+      dock.style.left = Math.max(8, Math.min(x, innerWidth - dock.getBoundingClientRect().width - 8)) + 'px';
+      pin(y);
+    }
+    try {
+      const p = JSON.parse(localStorage.getItem(positionKey) || 'null');
+      if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) placeDock(p.x, p.y);
+    } catch (_) {}
+    foldButton.style.touchAction = 'none'; foldButton.style.cursor = 'grab';
+    foldButton.addEventListener('click', e => {
+      if (suppressClick) { e.preventDefault(); e.stopImmediatePropagation(); suppressClick = false; }
+    }, true);
+    foldButton.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      const r = dock.getBoundingClientRect();
+      dockDrag = {id:e.pointerId,x:e.clientX,y:e.clientY,left:r.left,top:r.top,moved:false};
+      suppressClick = false; foldButton.setPointerCapture(e.pointerId);
+    });
+    foldButton.addEventListener('pointermove', e => {
+      if (!dockDrag || dockDrag.id !== e.pointerId) return;
+      const dx=e.clientX-dockDrag.x, dy=e.clientY-dockDrag.y;
+      if (!dockDrag.moved && Math.hypot(dx,dy)<5) return;
+      dockDrag.moved=true; suppressClick=true; foldButton.style.cursor='grabbing';
+      placeDock(dockDrag.left+dx,dockDrag.top+dy);
+    });
+    const finishDockDrag = e => {
+      if (!dockDrag || dockDrag.id !== e.pointerId) return;
+      if (dockDrag.moved) {
+        const r=dock.getBoundingClientRect();
+        try { localStorage.setItem(positionKey,JSON.stringify({x:r.left,y:r.top})); localStorage.setItem(foldKey,JSON.stringify({folded,top:anchor})); } catch (_) {}
+      }
+      dockDrag=null; foldButton.style.cursor='grab';
+    };
+    foldButton.addEventListener('pointerup',finishDockDrag);
+    foldButton.addEventListener('pointercancel',finishDockDrag);
+    foldButton.addEventListener('lostpointercapture',finishDockDrag);
     foldLabel();
     if (anchor !== null) pin(anchor);
     if (folded) dock.style.height = '54px';
@@ -164,7 +203,7 @@
       const stop = e => { if (!active || active.id !== e.pointerId) return; active = null; clamp(pane); save(); };
       handle.addEventListener('pointerup', stop); handle.addEventListener('pointercancel', stop); handle.addEventListener('lostpointercapture', stop);
     }
-    window.addEventListener('resize', () => { for (const { pane } of entries.values()) clamp(pane); if (anchor !== null) pin(anchor); });
+    window.addEventListener('resize', () => { for (const { pane } of entries.values()) clamp(pane); if (anchor !== null) placeDock(dock.getBoundingClientRect().left,anchor); });
     window.__kjdMoonDockV2 = { register, drag, clamp, sync };
     return window.__kjdMoonDockV2;
   }
