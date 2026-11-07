@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Poke Moon - Oficina Automática
 // @namespace    local.pokemoon.profissoes
-// @version      1.1.1
-// @description  Bancada, pedidos, estufa e busca opcional de insumos sem bosses.
+// @version      1.2.0
+// @description  Bancada, pedidos, estufa, insumos e expedições com Mapa Antigo.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
 // @grant        none
@@ -28,6 +28,15 @@ function professionPlan(v, options = {}) {
   const parse = key => /^p2:([^@~]+)(?:@([a-z]+))?/.exec(key || '');
   const forOrder = x => { const k = parse(x.chave); return choices(recipes.find(r=>r.id===(x.rid || k?.[1]))).find(c=>!c.t.tipo || c.t.tipo===k?.[2]); };
   const craft = (c,n,label,q=0) => ({op:'fazer',args:{rid:c.r.id,n:Math.min(c.cap,n),tipo:c.t.tipo,foco:!!focusFor(c.r,q,Math.min(c.cap,n))},label});
+  // Somente provisões da rota conhecida; nenhum outro apoio ou compra implícita.
+  if(o.exped && p.id==='pesquisador' && v.exped?.pode) {
+    const e=v.exped, chest=(e.baus || []).find(b=>b.id!=null);
+    if(chest) return {op:'expAbrir',args:{id:chest.id},label:'Abrindo baú de expedição'};
+    const route=(e.rotas || []).find(r=>r.id==='media' && r.aberta===true && !r.trancada);
+    const price=Number(route?.provisoes);
+    if(route && Number.isFinite(price) && price>=0 && Number(v.gold)>=price && (e.equipes || []).length<Number(e.vagas))
+      return {op:'expMandar',args:{rota:'media',usar:o.expedMap!==false && Number(e.apoio?.mapa)>0?['mapa']:[]},expeditionCost:price,label:'Enviando expedição: Caverna de Cristal'};
+  }
   if (items.some(x=>x.pronto)) return {op:'coletar',args:{},label:'Coletando itens prontos'};
   if (o.npc) for (const x of ped.npc || []) if (!x.feito && x.tem>=x.n) return {op:'pedNpc',args:{i:x.i},label:'Entregando pedido de '+x.npc};
   if (o.public) for (const x of ped.aceitos || []) if (!x.meu && x.pronto>=x.n) return {op:'pedEntregar',args:{id:x.id},label:'Entregando pedido fabricado'};
@@ -69,6 +78,10 @@ function professionPlan(v, options = {}) {
         return {op:'pedAceitar',args:{id:x.id},label:'Aceitando pedido com insumos e prazo'};
     }
     if(o.bench) {
+      if(o.exped && o.expedMap!==false && p.id==='pesquisador' && v.exped?.pode && Number(v.exped.apoio?.mapa || 0)<1 && (v.exped.rotas || []).some(r=>r.id==='media' && r.aberta===true) && !items.some(i=>i.rid==='pes-25')) {
+        const map=choices(recipes.find(r=>r.id==='pes-25')).find(c=>c.cap>0);
+        if(map) return craft(map,1,'Preparando Mapa Antigo para expedição');
+      }
       const list=recipes.flatMap(choices).filter(c=>c.cap>0 && Number(c.r.xp?.vFim ?? c.r.xp?.v)>0 && Number(c.r.tempo?.fim)>0);
       list.sort((a,b)=>(Number(b.r.xp.vFim ?? b.r.xp.v)/b.r.tempo.fim)-(Number(a.r.xp.vFim ?? a.r.xp.v)/a.r.tempo.fim) || b.r.nivel-a.r.nivel);
       if(list.length) return craft(list[0],list[0].cap,'Enchendo fila: '+list[0].r.nome);
@@ -369,7 +382,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
     gathering.phase='hunting';saveGather();return true;
   }
   const panel=document.createElement('section');panel.id='ipm-auto-prof';panel.className='moon-panel';moonPanelTheme();
-  panel.innerHTML=`<div class="moon-head" data-handle><span data-icon></span><span class="moon-title">Oficina Automática<span class="moon-dot"></span></span><button data-close title="Fechar painel">×</button></div><div class="moon-body"><div class="moon-state"><span data-mode>Desligada</span><span data-prof>Detectando profissão…</span></div><p class="moon-note">Bancada e fila com prioridade para pedidos; depois, maior XP por tempo.</p><label class="moon-line">Bancada e coleta<input type="checkbox" data-opt="bench" checked></label><label class="moon-line">Pedidos de NPC<input type="checkbox" data-opt="npc" checked></label><label class="moon-line">Pedidos de jogadores<input type="checkbox" data-opt="public" checked></label><label class="moon-line">Estufa · plantio sem teto<input type="checkbox" data-opt="garden" checked></label><label class="moon-line">Buscar insumos nas hunts<input type="checkbox" data-opt="gather"></label><button class="moon-go" data-toggle>Ligar automação</button><div class="moon-detail" role="status" data-status>Começa desligada. Sua escolha fica salva por personagem.</div><div class="moon-foot">Sem compras de itens, diamantes ou pontos de talento.<br>Dinheiro somente para adubo de plantio; sem teto acumulado.<br><span data-budget>Adubo gasto: $0</span></div></div>`;
+  panel.innerHTML=`<div class="moon-head" data-handle><span data-icon></span><span class="moon-title">Oficina Automática<span class="moon-dot"></span></span><button data-close title="Fechar painel">×</button></div><div class="moon-body"><div class="moon-state"><span data-mode>Desligada</span><span data-prof>Detectando profissão…</span></div><p class="moon-note">Bancada e fila com prioridade para pedidos; depois, maior XP por tempo.</p><label class="moon-line">Bancada e coleta<input type="checkbox" data-opt="bench" checked></label><label class="moon-line">Pedidos de NPC<input type="checkbox" data-opt="npc" checked></label><label class="moon-line">Pedidos de jogadores<input type="checkbox" data-opt="public" checked></label><label class="moon-line">Estufa · plantio sem teto<input type="checkbox" data-opt="garden" checked></label><label class="moon-line">Expedições · Caverna de Cristal<input type="checkbox" data-opt="exped" checked></label><label class="moon-line">Usar e repor Mapa Antigo<input type="checkbox" data-opt="expedMap" checked></label><label class="moon-line">Buscar insumos nas hunts<input type="checkbox" data-opt="gather"></label><button class="moon-go" data-toggle>Ligar automação</button><div class="moon-detail" role="status" data-status>Começa desligada. Sua escolha fica salva por personagem.</div><div class="moon-foot">Sem compras de itens, diamantes ou pontos de talento.<br>Dinheiro para adubo e provisões de expedição; sem teto acumulado.<br><span data-budget>Adubo gasto: $0</span></div></div>`;
   function hammerIcon(){const c=document.createElement('canvas');c.width=c.height=32;c.style.imageRendering='pixelated';const g=c.getContext('2d'),im=new Image();im.onload=()=>{if(g){g.imageSmoothingEnabled=false;g.drawImage(im,0,0,32,32);}};im.src='data:image/png;base64,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';return c;}
   panel.querySelector('[data-icon]').replaceWith(hammerIcon());document.body.appendChild(panel);
   addMoonDockButton('profissoes','Oficina Automática — Martelo',hammerIcon(),panel);
@@ -388,7 +401,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
     plantSpent=Math.max(0,Number(saved.plantSpent)||0);enabled=saved.enabled===true;for(const i of inputs)i.checked=i.dataset.opt==='gather'?saved.options?.gather===true:saved.options?.[i.dataset.opt]!==false;render(enabled?'Retomando automação salva…':'Desligada. Nenhum recurso será usado.');restoreGather();}
   toggle.onclick=()=>{bind();if(!owner){render('Aguarde o personagem carregar.');return;}enabled=!enabled;generation++;suspended=false;save();render(enabled?'Ligada: verificando profissão e insumos…':'Desligada manualmente. Itens já na bancada continuam no jogo.');if(gathering && !enabled){gathering.returning=true;saveGather();}if(enabled || gathering){lastRead=0;void tick();}};
   inputs.forEach(i=>i.onchange=()=>{save();generation++;suspended=false;lastRead=0;void tick();});
-  const allowedOps=new Set(['fazer','coletar','pedNpc','pedAceitar','pedFabricar','pedEntregar','estufaColher','estufaPlantar','estufaViva']);
+  const allowedOps=new Set(['fazer','coletar','pedNpc','pedAceitar','pedFabricar','pedEntregar','estufaColher','estufaPlantar','estufaViva','expMandar','expAbrir']);
   async function tick(){
     bind();if(busy || !owner || !window.P2?.ligado?.())return;
     if(Date.now()-lastRead < (enabled || gathering?15000:60000))return;
@@ -399,21 +412,24 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
       lastView=v;const p=v.nucleo?.prof;panel.querySelector('[data-prof]').textContent=p?p.nome+' · Nv '+p.nivel:'Sem profissão';
       if((!enabled && !gathering) || suspended)return;
       const plan=professionPlan(v,options());
-      if((gathering || !plan.op && options().gather) && await gatherTick(v,ticket))return;
+      if(!['expMandar','expAbrir'].includes(plan.op) && (gathering || !plan.op && options().gather) && await gatherTick(v,ticket))return;
       if(!enabled)return;
       if(!plan.op){render(plan.wait);return;}
       if(!allowedOps.has(plan.op) || (plan.args?.foco===true && !['fazer','pedFabricar'].includes(plan.op)) || plan.args?.pagar || plan.args?.confirmo)throw Error('Ação não permitida.');
       if(plan.op==='estufaViva' && plan.args.on!==false)throw Error('Replantio pago não permitido.');
       if(!enabled || ticket!==generation)return;
-      const reserved=Number(plan.plantCost)||0;
-      if(reserved && (plan.op!=='estufaPlantar' || reserved<0 || reserved>Number(v.gold)))throw Error('Saldo insuficiente para adubo.');
-      if(reserved){plantSpent+=reserved;save();}
+      const plantCost=Number(plan.plantCost)||0, expeditionCost=Number(plan.expeditionCost)||0;
+      const reserved=plantCost+expeditionCost;
+      if(plan.op==='expMandar' && (plan.args.rota!=='media' || !Array.isArray(plan.args.usar) || plan.args.usar.some(x=>x!=='mapa') || !options().exped))throw Error('Expedição não permitida.');
+      if(expeditionCost && (plan.op!=='expMandar' || expeditionCost<0 || !Number.isFinite(expeditionCost)))throw Error('Provisões inválidas.');
+      if(reserved && (!['estufaPlantar','expMandar'].includes(plan.op) || reserved<0 || reserved>Number(v.gold)))throw Error('Saldo insuficiente para adubo.');
+      if(plantCost){plantSpent+=plantCost;save();}
       render(plan.label+'…');
       const result=await window.P2.op(plan.op,plan.args);
       if(ticket!==generation)return;
-      if(!result || result.err || result.precisaPagar || result.precisaConfirmar) {if(result?.err && reserved){plantSpent-=reserved;save();}render('Aguardando: '+(result?.err || 'ação não confirmada')+'. Tentará novamente sem desligar.');return;}
+      if(!result || result.err || result.precisaPagar || result.precisaConfirmar) {if(result?.err && plantCost){plantSpent-=plantCost;save();}render('Aguardando: '+(result?.err || 'ação não confirmada')+'. Tentará novamente sem desligar.');return;}
       if(result.gold!=null && v.gold!=null && result.gold<v.gold-reserved || result.diamonds!=null && v.diamonds!=null && result.diamonds<v.diamonds){suspended=true;render('Saldo diminuiu durante a ação. Verificação suspensa; desligue e ligue para revisar.');return;}
-      if(reserved && Number.isFinite(result.r?.adubo) && result.r.adubo>=0 && result.r.adubo<reserved){plantSpent-=reserved-result.r.adubo;save();}
+      if(plantCost && Number.isFinite(result.r?.adubo) && result.r.adubo>=0 && result.r.adubo<reserved){plantSpent-=reserved-result.r.adubo;save();}
       render(plan.label+' ✓');lastRead=Date.now()-12000;
     }catch(e){render('Aguardando conexão: '+e.message+'. Continua ligada.');lastRead=Date.now();}
     finally{busy=false;if(ticket!==generation)lastRead=0;}
@@ -423,4 +439,3 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
   setInterval(()=>void tick(),3000);bind();void tick();
 
 })();
-
