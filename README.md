@@ -129,3 +129,9 @@ O time do perfil público pode ser diferente do time usado na ranqueada. Perfis 
 Sugere até seis espécies caçáveis nas hunts liberadas para seu nível, combinando frequência, vantagem ofensiva contra os dois tipos e resistência ao retorno. Usa a tabela de tipos do jogo quando disponível, com tabela padrão de alternativa. O tier desempata sugestões de cobertura semelhante; não é cálculo de poder nem simulação de PvP. Indica matchups vulneráveis e inimigos sem cobertura. Não avalia golpes, habilidades, velocidade, IVs ou dano real. Não garante vitórias.
 
 A rota sugerida lista as hunts, o que cada counter cobre e quais alvos precisam de captura/qualidade, com seleção manual. Nesta versão de planejamento, não viaja, não captura, não altera o time e não entra em PvP. A execução da caça/captura e a calculadora de poder ficam para uma etapa posterior, após revisar o plano.
+
+## Oficina Automática — profissões
+
+Instale pelo link `https://raw.githubusercontent.com/panicguy/idlepokemoon/main/PokeMoon-Oficina-Automatica.user.js` em **Ajustes → Automações**. O martelo abre o painel. A execução começa desligada por personagem; ao ligar, a preferência é salva e retomada após recarregar.
+
+A versão **1.1.1** mantém bancada/fila, coleta e pedidos, com busca opcional de insumos em hunts sem bosses. **O adubo de plantio não tem mais teto acumulado de gasto**: usa o saldo disponível enquanto houver insumos e a Estufa estiver habilitada. O contador de adubo é apenas informativo. Dinheiro continua permitido exclusivamente no plantio; não compra itens ou vagas, não usa diamantes e não distribui talentos. Para interromper o plantio, desmarque Estufa ou desligue a Oficina.
