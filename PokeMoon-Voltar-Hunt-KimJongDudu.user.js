@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon Voltar à Hunt by KimJongDudu
 // @namespace    https://github.com/panicguy/idlepokemoon
-// @version      1.0.3
+// @version      1.0.4
 // @description  Volte à hunt anterior ou a uma hunt salva. Atalho com a bicicleta do Pokémon.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -239,6 +239,8 @@
   const BASE = 'kjd-hunts-rapidas-v1';
   const defaults = () => ({ mode: 'species', furiosa: false, tm: false });
   let settings = defaults(), history = createHuntHistory(), owner = '', busy = false, zones = [], catalogAt = 0, recommendation = null;
+  // TM AoE is an installed tmArea on the active Pokemon, not a normal move or another team member.
+  function moonHasAoE(s){const p=s?.active || (s?.team || []).find(p=>p.id===s?.activeId);return typeof p?.tmArea==='string' && p.tmArea.trim().length>0;}
   const state = () => { try { return typeof K === 'object' && K?.player ? K : null; } catch (_) { return null; } };
   const token = () => { try { return typeof q === 'string' ? q : ''; } catch (_) { return ''; } };
   const readSaved = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (_) { return fallback; } };
@@ -249,7 +251,7 @@
     const zone = zones.find(z => z.index === index);
     return { index, furiosa: s?.inst?.furiosa === true, name: zone?.name || s.inst?.nome || s.zone?.name || 'Hunt #' + index, base: zone?.base || '' };
   };
-  const fingerprint = s => JSON.stringify([s?.player?.id || s?.player?.name, s?.player?.level, s?.active?.id, s?.active?.name]);
+  const fingerprint = s => JSON.stringify([s?.player?.id || s?.player?.name, s?.player?.level, s?.active?.id, s?.active?.name,moonHasAoE(s)]);
   const fmt = value => Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
   const panel = document.createElement('section'); panel.id = 'kjd-hunt-return'; panel.className = 'moon-panel'; moonPanelTheme();
   const style = document.createElement('style'); style.textContent = '#kjd-hunt-return{width:320px}#kjd-hunt-return select{max-width:150px;padding:5px;background:#0d1727;color:#f7e9c8;border:1px solid #485b77;border-radius:5px;font:inherit}#kjd-hunt-return .hunt-secondary{width:100%;margin-top:7px;padding:9px 8px;border:1px solid #485b77;border-radius:7px;background:#101c2a;color:#d2deed}#kjd-hunt-return .hunt-secondary:hover{background:#1c2d44}#kjd-hunt-return .hunt-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}';
@@ -295,7 +297,8 @@
   async function allowedHunts() { if (typeof window.IPM_HUNTS?.liberadas !== 'function') throw Error('A interface de hunts do jogo ainda não está pronta.'); const result = await window.IPM_HUNTS.liberadas(); if (!(result instanceof Set)) throw Error('Não foi possível validar as hunts liberadas.'); return new Set([...result].map(normalizeHunt)); }
   async function travel(destination) {
     if (!destination) throw Error('Ainda não há uma hunt registrada para esse atalho.');
-    await catalog(true); const s = state(), available = await allowedHunts();
+    await catalog(true); const available = await allowedHunts(), s = state();
+    destination={...destination,furiosa:moonHasAoE(s)};
     if (!s?.active || s.fainted || Number(s.active.hp) <= 0) throw Error('Use um pokémon ativo que não esteja desmaiado.');
     const zone = zones.find(z => z.index === destination.index);
     if (!zone || (destination.base && zone.base !== destination.base) || !available.has(zone.base) || zone.level > s.player.level) throw Error('Essa hunt não está liberada para a conta atual.');
