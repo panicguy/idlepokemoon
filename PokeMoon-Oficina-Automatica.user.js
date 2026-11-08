@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Oficina Automática
 // @namespace    local.pokemoon.profissoes
-// @version      1.3.0
+// @version      1.3.1
 // @description  Bancada, pedidos, estufa, insumos e expedições com Mapa Antigo.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -10,22 +10,28 @@
 // ==/UserScript==
 
 (()=>{'use strict';if(document.getElementById('ipm-auto-prof'))return;
-function professionPlan(v, options = {}) {
+function professionPlan(v, options = {}, catalog = null) {
   const p = v?.nucleo?.prof;
   if (!p || !['engenheiro','herborista','pesquisador'].includes(p.id)) return {wait:'Escolha sua profissão no jogo.'};
   const o = {bench:true,npc:true,public:true,garden:true,...options};
   const f = p.fila || {}, items = f.itens || [], free = Math.max(0,(f.livres?.vagas || 0)+(f.livres?.espera || 0));
   const recipes = p.receitas || [], ped = v.ped || {};
   const paid = x => ['gold','diamonds','dinheiro','diamante','preco','taxaCraft'].some(k=>Number(x?.[k])>0);
-  const choices = (r) => {
+  const typeKeys=new Set(['normal','fire','water','electric','grass','ice','fighting','poison','ground','flying','psychic','bug','rock','ghost','dragon','dark','steel','fairy']);
+  const choices = (r, requestedType=null) => {
     if (!r || r.trancada || r.estado !== 'pronto' || paid(r)) return [];
-    return (r.tipos || [{tipo:null,maxN:r.maxN,maxQtd:r.maxQtd,custo:r.custo}]).filter(t=>!paid(t) && (t.custo || r.custo || []).every(c=>!/(gold|diam|dinheiro|money|coin)/i.test(c.id) && Number(c.tem)>=Number(c.qtd)) && Number(t.maxN)>0)
+    const definition=catalog?.profissoes?.[p.id]?.receitas?.find(x=>x.id===r.id);
+    const typed=r.tipo===true || definition?.tipo===true;
+    if(requestedType && !typeKeys.has(requestedType))return [];
+    const selected=requestedType || (typeKeys.has(o.craftType)?o.craftType:'normal');
+    const variants=Array.isArray(r.tipos) && r.tipos.length?r.tipos:[{tipo:typed?selected:null,maxN:r.maxN,maxQtd:r.maxQtd,custo:r.custo}];
+    return variants.filter(t=>(!typed || typeKeys.has(t.tipo)) && (!requestedType || !typed && !t.tipo || t.tipo===requestedType) && !paid(t) && (t.custo || r.custo || []).every(c=>!/(gold|diam|dinheiro|money|coin)/i.test(c.id) && Number(c.tem)>=Number(c.qtd)) && Number(t.maxN)>0)
       .map(t=>({r,t,cap:Math.max(0,Math.min(Number(t.maxN)||0,Number(t.maxQtd ?? r.maxQtd ?? free)||0,free))}));
   };
   const focusFor = (r,q,n=1) => r.fixa == null && !(r.chances || []).slice(q).some(x=>x>0) && (r.chancesFoco || []).slice(q).some(x=>x>0) && Number(v.nucleo.foco?.v)>=Number(v.nucleo.foco?.porItem || 10)*n;
   const quality = (r,q,n=1) => r.fixa != null ? r.fixa >= q : (r.chances || []).slice(q).some(x=>x>0) || focusFor(r,q,n);
   const parse = key => /^p2:([^@~]+)(?:@([a-z]+))?/.exec(key || '');
-  const forOrder = x => { const k = parse(x.chave); return choices(recipes.find(r=>r.id===(x.rid || k?.[1]))).find(c=>!c.t.tipo || c.t.tipo===k?.[2]); };
+  const forOrder = x => { const k = parse(x.chave); return choices(recipes.find(r=>r.id===(x.rid || k?.[1])),k?.[2]).find(c=>!c.t.tipo || c.t.tipo===k?.[2]); };
   const craft = (c,n,label,q=0) => ({op:'fazer',args:{rid:c.r.id,n:Math.min(c.cap,n),tipo:c.t.tipo,foco:!!focusFor(c.r,q,Math.min(c.cap,n))},label});
   // Somente provisões da rota conhecida; nenhum outro apoio ou compra implícita.
   if(o.exped && p.id==='pesquisador' && v.exped?.pode) {
@@ -61,7 +67,7 @@ function professionPlan(v, options = {}) {
   }
   if (free>0) {
     if(o.bench) {
-      const list=recipes.flatMap(choices).filter(c=>c.cap>0 && Number(c.r.xp?.vFim ?? c.r.xp?.v)>0 && Number(c.r.tempo?.fim)>0);
+      const list=recipes.flatMap(r=>choices(r)).filter(c=>c.cap>0 && Number(c.r.xp?.vFim ?? c.r.xp?.v)>0 && Number(c.r.tempo?.fim)>0);
       list.sort((a,b)=>Number(b.r.xp.vFim ?? b.r.xp.v)-Number(a.r.xp.vFim ?? a.r.xp.v) || a.r.tempo.fim-b.r.tempo.fim || b.r.nivel-a.r.nivel);
       if(list.length) return craft(list[0],list[0].cap,'Enchendo fila: '+list[0].r.nome);
     }
@@ -390,7 +396,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
       }
     }
     if(all){
-      const plan=professionPlan(v,opt);
+      const plan=professionPlan(v,{...opt,craftType:state()?.active?.tmArea},window.P2.dados);
       if(plan.op){gathering.costs=[];saveGather();render('Insumos reunidos; preenchendo a bancada antes de voltar…');return false;}
       const next=await nextGatherRecipe(v,ticket);if(ticket!==generation)return true;
       if(next){Object.assign(gathering,{rid:next.rid,recipe:next.name,tipo:next.tipo,n:next.n,costs:next.costs});saveGather();render('Continuando a fila de insumos: '+next.name+'…');return true;}
@@ -442,7 +448,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
       if(ticket!==generation || account!==owner || !v?.ok)return;
       lastView=v;professionOptions(v);const p=v.nucleo?.prof;panel.querySelector('[data-prof]').textContent=p?p.nome+' · Nv '+p.nivel:'Sem profissão';
       if((!enabled && !gathering) || suspended)return;
-      const plan=professionPlan(v,options());
+      const plan=professionPlan(v,{...options(),craftType:state()?.active?.tmArea},window.P2.dados);
       if(!['expMandar','expAbrir'].includes(plan.op) && (gathering || !plan.op && options().gather) && await gatherTick(v,ticket))return;
       if(!enabled)return;
       if(!plan.op){render(plan.wait);return;}
