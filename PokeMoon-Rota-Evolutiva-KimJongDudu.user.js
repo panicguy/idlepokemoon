@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon Rota Evolutiva by KimJongDudu
 // @namespace    https://github.com/panicguy/idlepokemoon
-// @version      1.1.2
+// @version      1.1.3
 // @description  Treina os tipos da missão em hunts fáceis, evolui e viaja para melhor XP após confirmar a nova forma.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -308,7 +308,9 @@
     if(plan.trainingIndex!==zone.index){plan.trainingIndex=zone.index;plan.progressAt=Date.now();save();}
     await travel(zone,context,settings.furiosa===true);status='Treinando '+p.name+' em '+zone.name+' · nível '+zone.level+(settings.furiosa?' · Furiosa':'')+'. Próxima troca ao concluir os tipos.';
   }
-  async function tick(){if(busy||!bind()||!plan?.running)return;busy=true;const context=epoch;render();try{await step(context);}catch(e){if(context===epoch)halt(e.message);}finally{busy=false;render();}}
+  let professionGatherHold=0;
+  function professionGatherYield(){if(window.__ipmProfessionGatherLease){if(!professionGatherHold)professionGatherHold=Date.now();return true;}if(professionGatherHold){const elapsed=Math.max(0,Date.now()-professionGatherHold);if(typeof plan==='object' && plan){if(typeof plan.deadline==='number')plan.deadline+=elapsed;if(typeof plan.entered==='number')plan.entered+=elapsed;}professionGatherHold=0;}return false;}
+  async function tick(){if(professionGatherYield())return;if(busy||!bind()||!plan?.running)return;busy=true;const context=epoch;render();try{await step(context);}catch(e){if(context===epoch)halt(e.message);}finally{busy=false;render();}}
   $('pick').onchange=()=>{previewZone='';fillTargets();status='Consulte a missão desse Pokémon. Para iniciar, coloque-o como ativo no jogo.';render();};
   $('preview').onclick=preview;
   $('start').onclick=async()=>{if(busy||!bind())return;const p=selectedPokemon(),target=$('target').value;if(!p||!target)return;try{if(String(p.id)!==String(state()?.active?.id))throw Error('Coloque '+p.name+' para caçar em Time → Caçar com este antes de iniciar.');requirements(p,questFor(p,target),state().player.level);if(!Number.isInteger(settings.cap)||settings.cap<1||settings.cap>1000)throw Error('Use um limite de hunt entre 1 e 1000.');const resume=plan?.pokeId===String(p.id)&&plan?.target===target;plan={...(resume?plan:{}),pokeId:String(p.id),source:resume?plan.source:norm(p.key||p.base||p.name),target,running:true,phase:'training',excluded:[],progressAt:Date.now()};epoch++;status='Rota iniciada…';save();render();await tick();}catch(e){halt(e.message);}};
