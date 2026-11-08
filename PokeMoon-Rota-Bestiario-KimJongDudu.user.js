@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Rota do Bestiário
 // @namespace    local.pokemoon.bestiario
-// @version      1.1.3
+// @version      1.1.6
 // @description  Visita hunts liberadas e captura uma espécie normal faltante por vez.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -230,13 +230,13 @@
     <div class="moon-body">
       <div class="moon-state"><span data-mode>Pronto</span><span>POKE MOON</span></div>
       <div class="moon-metrics"><div class="moon-metric"><small>Concluídas</small><strong data-counter>0</strong></div><div class="moon-metric"><small>Espécies por vez</small><strong>1</strong></div></div>
-      <label class="moon-line"><span>⏱ Minutos por hunt</span><input data-min type="number" min="1" max="1440" value="10"></label>
-      <label class="moon-line"><span>◉ Bolas por hunt</span><input data-balls type="number" min="1" max="1000" value="60"></label>
+      <label class="moon-line"><span>⏱ Minutos por hunt</span><input data-min type="number" min="0" max="1440" value="0"></label>
+      <label class="moon-line"><span>◉ Bolas por hunt</span><input data-balls type="number" min="0" max="1000" value="0"></label>
       <label class="moon-line"><span>Hunt Furiosa</span><input data-furiosa type="checkbox"></label>
       <button type="button" data-start class="moon-go">▶ Iniciar / retomar</button>
       <button type="button" data-stop class="moon-stop">Ⅱ Pausar rota</button>
       <div data-status role="status" class="moon-detail">Pronto. Nenhuma ação iniciada.</div>
-      <div class="moon-foot">Captura uma espécie normal por vez.<br>Pausar mantém Auto-Catch e combate.</div>
+      <div class="moon-foot">Ordem: C → B → A → S → SR; nível desempata.<br>0 = sem limite de tempo ou bolas.<br>Retoma após recarregar; Pausar cancela a retomada.<br>Captura uma espécie normal por vez.<br>Pausar mantém Auto-Catch e combate.</div>
     </div>`;
   const routeIcon = kjdMagmarCanvas(); if (routeIcon) panel.querySelector('[data-route-icon]').replaceWith(routeIcon);
   panel.querySelector('[data-minimize]').onclick = e => { panel.classList.toggle('moon-collapsed'); e.currentTarget.textContent = panel.classList.contains('moon-collapsed') ? '+' : '−'; };
@@ -248,25 +248,38 @@
   const status = panel.querySelector('[data-status]');
   const startButton = panel.querySelector('[data-start]');
   const furiosaInput = panel.querySelector('[data-furiosa]');
+  const minutesInput = panel.querySelector('[data-min]');
+  const ballsInput = panel.querySelector('[data-balls]');
+  let resumePending = false;
+  function saveSettings(active = running) {
+    if (!settingsOwner) return;
+    try { localStorage.setItem(settingsKey(), JSON.stringify({furiosa:furiosaInput.checked,
+      minutes:Number(minutesInput.value),balls:Number(ballsInput.value),active,completed:[...completed]})); }
+    catch (_) { /* Continue current session if storage is unavailable. */ }
+  }
   function bindSettings() {
     const p = state()?.player, owner = p && String(p.id || p.name || p.nome || '');
     if (!owner || owner === settingsOwner) return;
+    running = false; target = null; generation++; completed.clear();
     settingsOwner = owner;
-    try { furiosaInput.checked = JSON.parse(localStorage.getItem(settingsKey()) || '{}').furiosa === true; }
-    catch (_) { furiosaInput.checked = false; }
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(settingsKey()) || '{}') || {}; } catch (_) {}
+    furiosaInput.checked = saved.furiosa === true;
+    minutesInput.value = Number.isFinite(saved.minutes) && saved.minutes >= 0 && saved.minutes <= 1440 ? saved.minutes : 0;
+    ballsInput.value = Number.isFinite(saved.balls) && saved.balls >= 0 && saved.balls <= 1000 ? saved.balls : 0;
+    for (const base of Array.isArray(saved.completed) ? saved.completed : []) if (typeof base === 'string') completed.add(base);
+    resumePending = saved.active === true;
   }
-  furiosaInput.onchange = () => {
-    const checked = furiosaInput.checked;
-    bindSettings();
-    if (running || busy || !settingsOwner) return;
-    furiosaInput.checked = checked;
-    localStorage.setItem(settingsKey(), JSON.stringify({furiosa:furiosaInput.checked}));
+  furiosaInput.onchange = () => { if (!running && !busy) saveSettings(false); };
+  minutesInput.onchange = ballsInput.onchange = () => {
+    try { numberSetting('[data-min]',1440); numberSetting('[data-balls]',1000); saveSettings(running || resumePending); }
+    catch (error) { say(error.message); }
   };
   bindSettings();
   function say(message) { panel.classList.toggle('moon-active', running); status.textContent = message;panel.querySelector('[data-counter]').textContent=completed.size;panel.querySelector('[data-mode]').textContent=running?(routeFuriosa?'Ativa · Furiosa':'Ativa'):'Pausada';furiosaInput.disabled=running||busy; }
   function numberSetting(selector, max) {
     const value = Number(panel.querySelector(selector).value);
-    if (!Number.isFinite(value) || value < 1 || value > max) throw new Error('Preencha limites válidos no painel.');
+    if (!Number.isFinite(value) || value < 0 || value > max) throw new Error('Preencha limites válidos no painel.');
     return value;
   }
   async function read(path) {
@@ -325,6 +338,8 @@
   }
   async function pause(message) {
     running = false;
+    resumePending = false;
+    saveSettings(false);
     generation++;
     say(message + '\nRota parada. Auto-Catch preservado; controle a captura pelo Auto-Helper.');
     startButton.disabled = false;
@@ -342,11 +357,20 @@
     if (!s.auto.ballAuto && !(Number(s.balls[s.auto.ball]) > 0)) throw new Error('A bola selecionada acabou. Escolha outra no jogo.');
     return s;
   }
+  const tierOrder = ['C', 'B', 'A', 'S', 'SR', 'SSR', 'UR', 'LR', 'PRISMA'];
+  function tierOf(zone) {
+    const species = catalog.especies.find(p => norm(p.k) === zone.base);
+    return String(zone.tier || species?.tier || '').trim().toUpperCase();
+  }
+  function tierRank(zone) {
+    const rank = tierOrder.indexOf(tierOf(zone));
+    return rank < 0 ? tierOrder.length : rank;
+  }
   async function next() {
     const s = checkSafety();
     const choices = zones.filter(z => allowed.has(z.base) && z.lv <= s.player.level && missing(z.base));
-    choices.sort((a,b) => a.lv - b.lv || a.base.localeCompare(b.base));
-    target = choices.find(z => z.index === currentZone()) || choices[0] || null;
+    choices.sort((a,b) => tierRank(a) - tierRank(b) || a.lv - b.lv || a.base.localeCompare(b.base));
+    target = choices[0] || null;
     if (!target) return pause('Concluído: nenhuma espécie faltante elegível nas hunts liberadas.');
     startedAt = Date.now();
     startBalls = totalBalls(s);
@@ -356,10 +380,15 @@
     // A resposta da troca precisa identificar a instância antes de capturar.
     if (!running) return;
     if (!atDestination()) throw new Error('O jogo não confirmou a chegada à hunt no modo escolhido.');
-    say('Caçando: ' + target.name + '\nAguardando 1 captura normal. Concluídas nesta sessão: ' + completed.size);
+    say('Caçando: ' + target.name + (tierOf(target) ? ' · Tier ' + tierOf(target) : '') + '\nAguardando 1 captura normal. Concluídas nesta sessão: ' + completed.size);
   }
-  async function tick() {
+  let professionGatherHold=0,professionGatherBalls=0;
+  function professionGatherYield(){if(window.__ipmProfessionGatherLease){if(!professionGatherHold){professionGatherHold=Date.now();professionGatherBalls=totalBalls(state()||{});}return true;}if(professionGatherHold){const elapsed=Math.max(0,Date.now()-professionGatherHold);if(target){startedAt+=elapsed;startBalls=Math.max(0,startBalls-Math.max(0,professionGatherBalls-totalBalls(state()||{})));}professionGatherHold=0;}return false;}
+  async function tick() {if(professionGatherYield())return;
     bindSettings();
+    if (resumePending && !running && !busy && Date.now() >= retryAt && state()?.active && typeof window.IPM_HUNTS?.liberadas === 'function' && typeof window.IPM_ON_STATE === 'function') {
+      resumePending = false; await startButton.onclick(); return;
+    }
     if (!running || busy || stopping || Date.now() < retryAt) return;
     busy = true;
     try {
@@ -380,6 +409,7 @@
         // Confirma a espécie no catálogo, em vez de contar bolas lançadas ou abates.
         if (owned(target.base) || catalog.colecao[target.base]) {
           completed.add(target.base);
+          saveSettings(true);
           target = null;
           if (running) await next();
           return;
@@ -387,9 +417,10 @@
       }
       const used = Math.max(0, startBalls - totalBalls(s));
       const elapsed = (Date.now() - startedAt) / 60000;
-      if (used >= numberSetting('[data-balls]',1000)) throw new Error('Limite de bolas atingido em ' + target.name + '.');
-      if (elapsed >= numberSetting('[data-min]',1440)) throw new Error('Limite de tempo atingido em ' + target.name + '.');
-      say('Caçando: ' + target.name + '\n' + used + ' bolas · ' + elapsed.toFixed(1) + ' min\nConcluídas nesta sessão: ' + completed.size);
+      const ballLimit = numberSetting('[data-balls]',1000), minuteLimit = numberSetting('[data-min]',1440);
+      if (ballLimit > 0 && used >= ballLimit) throw new Error('Limite de bolas atingido em ' + target.name + '.');
+      if (minuteLimit > 0 && elapsed >= minuteLimit) throw new Error('Limite de tempo atingido em ' + target.name + '.');
+      say('Caçando: ' + target.name + (tierOf(target) ? ' · Tier ' + tierOf(target) : '') + '\n' + used + ' bolas · ' + elapsed.toFixed(1) + ' min\nConcluídas nesta sessão: ' + completed.size);
     } catch (error) {
       if (error.transient || error.name === 'TimeoutError' || error instanceof TypeError) {
         retryAt = Date.now() + 5000;
@@ -421,9 +452,11 @@
       allowed = await window.IPM_HUNTS.liberadas();
       if (attempt !== generation) return;
       if (!(allowed instanceof Set)) throw new Error('Não foi possível validar as hunts liberadas.');
-      zones = raw.zonas.map(z => ({index:z.i,name:z.n,base:norm(z.b || z.esp),lv:Number(z.lv)}))
+      zones = raw.zonas.map(z => ({index:z.i,name:z.n,base:norm(z.b || z.esp),lv:Number(z.lv),tier:z.tier}))
         .filter(z => Number.isInteger(z.index) && z.base && Number.isFinite(z.lv));
       running = true;
+      resumePending = false;
+      saveSettings(true);
       target = null;
       retryAt = 0;
       say('Rota ativa. Preparando a próxima hunt…');
