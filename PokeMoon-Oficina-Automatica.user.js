@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Oficina Automática
 // @namespace    local.pokemoon.profissoes
-// @version      1.4.0
+// @version      1.4.1
 // @description  Bancada, pedidos, estufa, insumos e expedições com Mapa Antigo.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -127,7 +127,7 @@ function gatherEligibleZones(origin,zones,allowed,level) {
     .map(z=>({...z,shinyOnly:!routes.some(r=>r.tier===z.tier && !r.shiny)}))
     .sort((a,b)=>Number(a.shinyOnly)-Number(b.shinyOnly) || Number(a.lv)-Number(b.lv) || a.i-b.i);
 }
-function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.activeId);return typeof a?.tmArea==='string' && a.tmArea.length>0;}
+function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.activeId);return typeof a?.tmArea==='string' && a.tmArea.trim().length>0;}
 
   // BEGIN SHARED MOON DOCK — embedded in each standalone userscript.
   function moonDock() {
@@ -340,6 +340,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
   const zoneNow=()=>Number.isInteger(state()?.inst?.zona)?state().inst.zona:state()?.zone?.index;
   const atGatherZone=z=>zoneNow()===z.index && (state()?.inst?.furiosa===true)===z.furiosa;
   async function gatherTravel(z,ticket){
+    z.furiosa=gatherHasAoE(state());
     const known=huntCatalog?.find(x=>x.i===z.index);
     if(!known || known.boss || known.chefe || known.luta || known.bossId || !Number.isInteger(z.index) || ticket!==generation)throw Error('Viagem cancelada.');
     if(atGatherZone(z))return;
