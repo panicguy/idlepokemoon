@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon Hunts rápidas by KimJongDudu
 // @namespace    https://github.com/panicguy/idlepokemoon
-// @version      1.1.2
+// @version      1.1.3
 // @description  Atalho para a melhor hunt por XP do recomendador do Hub.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -240,6 +240,8 @@
   const BASE = 'kjd-hunts-rapidas-v1';
   const defaults = () => ({ mode: 'species', furiosa: false, tm: false });
   let settings = defaults(), owner = '', busy = false, zones = [], catalogAt = 0, recommendation = null;
+  // TM AoE is an installed tmArea on the active Pokemon, not a normal move or another team member.
+  function moonHasAoE(s){const p=s?.active || (s?.team || []).find(p=>p.id===s?.activeId);return typeof p?.tmArea==='string' && p.tmArea.trim().length>0;}
   const state = () => { try { return typeof K === 'object' && K?.player ? K : null; } catch (_) { return null; } };
   const token = () => { try { return typeof q === 'string' ? q : ''; } catch (_) { return ''; } };
   const readSaved = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (_) { return fallback; } };
@@ -249,7 +251,7 @@
     const zone = zones.find(z => z.index === index);
     return { index, furiosa: s?.inst?.furiosa === true, name: zone?.name || s.inst?.nome || s.zone?.name || 'Hunt #' + index, base: zone?.base || '' };
   };
-  const fingerprint = s => JSON.stringify([s?.player?.id || s?.player?.name, s?.player?.level, s?.active?.id, s?.active?.name]);
+  const fingerprint = s => JSON.stringify([s?.player?.id || s?.player?.name, s?.player?.level, s?.active?.id, s?.active?.name,moonHasAoE(s)]);
   const fmt = value => Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
   const panel = document.createElement('section'); panel.id = 'kjd-hunts-shortcut'; panel.className = 'moon-panel'; moonPanelTheme();
   const style = document.createElement('style'); style.textContent = '#kjd-hunts-shortcut{width:320px}#kjd-hunts-shortcut select{max-width:150px;padding:5px;background:#0d1727;color:#f7e9c8;border:1px solid #485b77;border-radius:5px;font:inherit}#kjd-hunts-shortcut .hunt-secondary{width:100%;margin-top:7px;padding:9px 8px;border:1px solid #485b77;border-radius:7px;background:#101c2a;color:#d2deed}#kjd-hunts-shortcut .hunt-secondary:hover{background:#1c2d44}#kjd-hunts-shortcut .hunt-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}';
@@ -258,7 +260,7 @@
     <div class="moon-body"><div class="moon-state"><span data-status>Entre numa conta para usar</span><span>POKE MOON</span></div>
     <div class="moon-metrics"><div class="moon-metric"><small>Hunt atual</small><strong class="moon-value-text" data-current>—</strong></div></div>
     <label class="moon-line"><span>Cálculo de XP</span><select data-mode><option value="species">Média da espécie</option><option value="mine">Meu pokémon</option></select></label>
-    <label class="moon-line"><span>Hunt Furiosa</span><input type="checkbox" data-furiosa></label><label class="moon-line" data-tm-row><span>Simular TM de área</span><input type="checkbox" data-tm></label>
+    <label class="moon-line"><span>Furiosa automática por TM</span><input type="checkbox" data-furiosa></label><label class="moon-line" data-tm-row><span>TM AoE detectada</span><input type="checkbox" data-tm></label>
     <div class="moon-note" data-context>Usa o recomendador de XP base/h do Hub.</div>
     <button type="button" class="hunt-secondary" data-consult>Consultar melhor XP</button><div class="moon-detail" data-result>Consulte para ver a recomendação. Ir para melhor XP também consulta antes de viajar.</div>
     <button type="button" class="moon-go" data-best>▶ Ir para melhor XP</button>
@@ -282,10 +284,10 @@
   function render() {
     const s = state();
     $('current').textContent = label(descriptor(s));
-    $('mode').value = settings.mode; $('furiosa').checked = settings.furiosa; $('tm').checked = settings.tm; $('tm-row').hidden = settings.mode === 'mine';
+    $('mode').value = settings.mode; $('furiosa').checked = moonHasAoE(s); $('tm').checked = moonHasAoE(s); $('tm-row').hidden = false;
     $('context').textContent = s?.active ? (s.active.shiny ? '✨ ' : '') + s.active.name + ' · nível da conta ' + fmt(s.player.level) + ' · XP base/h, sem buffs.' : 'Aguardando o pokémon ativo.';
     for (const element of panel.querySelectorAll('.moon-body button,select,input')) element.disabled = busy || !s?.active;
-    panel.classList.toggle('moon-active', busy);
+    $('furiosa').disabled=true;$('tm').disabled=true;panel.classList.toggle('moon-active', busy);
   }
   function observe() {
     const s = state(); if (!s?.player) { render(); return; }
@@ -303,20 +305,21 @@
   async function consult() {
     const s = state(); if (!s?.active) throw Error('Entre no jogo com um pokémon ativo.');
     if (!window.__idleMoonHunts?.request) throw Error('Este atalho precisa da integração de Hunts rápidas no Hub atualizado.');
-    const context = fingerprint(s), query = { nivel: s.player.level, furiosa: settings.furiosa, tm: settings.tm };
+    const context = fingerprint(s), query = { nivel: s.player.level, furiosa: moonHasAoE(s), tm: moonHasAoE(s) };
     if (settings.mode === 'mine') { if (s.active.id == null) throw Error('O jogo não informou o ID do pokémon ativo.'); query.poke = String(s.active.id); }
     else query.esp = normalizeHunt(s.active.base || s.active.key || s.active.species || s.active.name).replace(/^shiny\s+/, '');
     $('status').textContent = 'Consultando o Hub…';
     const [result, available] = await Promise.all([window.__idleMoonHunts.request(query), allowedHunts(), catalog()]);
     if (!result?.ok) throw Error(result?.error || 'O Hub não respondeu.');
     if (context !== fingerprint(state())) throw Error('O pokémon ou nível mudou durante a consulta. Consulte novamente.');
-    recommendation = chooseBestHunt(result.data.hunts, zones, available, s.player.level, settings.furiosa);
+    recommendation = chooseBestHunt(result.data.hunts, zones, available, s.player.level, moonHasAoE(s));
     $('result').textContent = label(recommendation) + '\n' + fmt(recommendation.xpH) + ' XP base/h' + (recommendation.verdict ? ' · ' + recommendation.verdict : '') + (recommendation.reason ? '\n' + recommendation.reason : '');
     $('status').textContent = 'Recomendação pronta'; return recommendation;
   }
   async function travel(destination) {
     if (!destination) throw Error('Ainda não há uma hunt registrada para esse atalho.');
-    await catalog(true); const s = state(), available = await allowedHunts();
+    await catalog(true); const available = await allowedHunts(), s = state();
+    destination={...destination,furiosa:moonHasAoE(s)};
     if (!s?.active || s.fainted || Number(s.active.hp) <= 0) throw Error('Use um pokémon ativo que não esteja desmaiado.');
     const zone = zones.find(z => z.index === destination.index);
     if (!zone || (destination.base && zone.base !== destination.base) || !available.has(zone.base) || zone.level > s.player.level) throw Error('Essa hunt não está liberada para a conta atual.');
@@ -332,7 +335,7 @@
   }
   async function run(action) { if (busy) return; busy = true; render(); try { await action(); } catch (e) { $('status').textContent = e.message || 'Não foi possível concluir.'; } finally { busy = false; observe(); } }
   $('consult').onclick = () => run(consult); $('best').onclick = () => run(async () => travel(await consult()));
-  for (const key of ['mode','furiosa','tm']) $(key).onchange = () => { settings[key] = key === 'mode' ? $(key).value : $(key).checked; if (owner) localStorage.setItem(BASE + ':settings:' + owner, JSON.stringify(settings)); recommendation = null; $('result').textContent = 'Opções alteradas. Consulte novamente para atualizar a recomendação.'; render(); };
+  for (const key of ['mode']) $(key).onchange = () => { settings[key] = key === 'mode' ? $(key).value : $(key).checked; if (owner) localStorage.setItem(BASE + ':settings:' + owner, JSON.stringify(settings)); recommendation = null; $('result').textContent = 'Opções alteradas. Consulte novamente para atualizar a recomendação.'; render(); };
   $('close').onclick = () => { panel.hidden = true; moonDock().sync(); };
   $('minimize').onclick = () => { panel.classList.toggle('moon-collapsed'); $('minimize').textContent = panel.classList.contains('moon-collapsed') ? '+' : '−'; };
   if (typeof window.IPM_ON_STATE === 'function') window.IPM_ON_STATE(observe);
