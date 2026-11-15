@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Oficina Automática
 // @namespace    local.pokemoon.profissoes
-// @version      1.5.0
+// @version      1.5.1
 // @description  Bancada, pedidos, estufa, insumos e expedições com Mapa Antigo.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -118,18 +118,22 @@ function stellarFragmentPlan(v, origin, catalog, options={}) {
   // duplicates when the server has not exposed a selectable quality yet.
   if(Number(v.usos?.peneira)>0)return wait('Aguardando qualidade da peneira com usos disponíveis.');
   const queue=p.fila?.itens || [];
-  if(queue.some(x=>x.rid==='pes-29' || x.chave==='p2:pes-29'))return wait('Peneira Fina já está na fila.');
+  if(queue.some(x=>x.rid==='pes-29' || x.chave==='p2:pes-29'))return {wait:'Peneira Fina já está na fila; prioridade reservada.',priority:true};
   if(p.id!=='pesquisador')return wait('Sem peneira. Só Pesquisador pode fabricar; usa as que estiverem na mochila.');
   const r=(p.receitas || []).find(x=>x.id==='pes-29'),definition=catalog?.profissoes?.pesquisador?.receitas?.find(x=>x.id==='pes-29');
-  if(!r || r.trancada || !Number.isFinite(Number(p.nivel)) || Number(p.nivel)<20 || r.estado!=='pronto' || !Number.isFinite(Number(r.maxN)) || Number(r.maxN)<1 || !Number.isFinite(Number(r.maxQtd)) || Number(r.maxQtd)<1)
-    return wait('Aguardando nível ou insumos da Peneira Fina.');
-  const free=Number(p.fila?.livres?.vagas || 0)+Number(p.fila?.livres?.espera || 0);
-  if(!Number.isFinite(free) || free<1)return wait('Aguardando vaga para a Peneira Fina.');
+  if(!r || r.trancada || !Number.isFinite(Number(p.nivel)) || Number(p.nivel)<20 || ['bloq','tal','rara'].includes(r.estado))
+    return wait('Peneira Fina exige Pesquisador Nv 20 e receita liberada.');
   const costs=r.custo;
   const expected=new Map([['enchanted gem@2',13],['semente@2',5]]);
-  if(!Array.isArray(costs) || costs.length!==2 || costs.some(c=>!expected.has(c.id+'@'+c.grau) || Number(c.qtd)!==expected.get(c.id+'@'+c.grau) || Number(c.tem)<Number(c.qtd) || !Number.isFinite(Number(c.tem))) || new Set(costs.map(c=>c.id+'@'+c.grau)).size!==2 || ['gold','diamonds','dinheiro','diamante','preco','taxaCraft'].some(k=>Number(r[k])>0))
+  if(!Array.isArray(costs) || costs.length!==2 || costs.some(c=>!expected.has(c.id+'@'+c.grau) || Number(c.qtd)!==expected.get(c.id+'@'+c.grau) || Number(c.tem)<0 || !Number.isFinite(Number(c.tem))) || new Set(costs.map(c=>c.id+'@'+c.grau)).size!==2 || ['gold','diamonds','dinheiro','diamante','preco','taxaCraft'].some(k=>Number(r[k])>0))
     return wait('Custo da Peneira Fina não confirmado.');
   if(definition && definition.nome!=='Peneira Fina')return wait('Receita da peneira não confirmada.');
+  const missing=costs.filter(c=>Number(c.tem)<Number(c.qtd));
+  if(missing.length)return {priority:true,wait:'Faltam insumos da Peneira Fina'+(options.gather?' · buscando nas hunts.':' · ligue Buscar insumos nas hunts.'),gatherRecipe:{rid:'pes-29',tipo:null,n:1,priority:2,name:'Peneira Fina para Fragmento Estelar',score:0,purpose:'stellar',costs:costs.map(c=>({id:c.id,grau:2,qtd:Number(c.qtd),tem:Number(c.tem)}))}};
+  const free=Number(p.fila?.livres?.vagas || 0)+Number(p.fila?.livres?.espera || 0);
+  if(!Number.isFinite(free) || free<1)return {priority:true,wait:'Fila cheia: próxima entrada reservada à Peneira Fina; XP pausado.'};
+  if(r.estado!=='pronto' || !Number.isFinite(Number(r.maxN)) || Number(r.maxN)<1 || !Number.isFinite(Number(r.maxQtd)) || Number(r.maxQtd)<1)
+    return {priority:true,wait:'Aguardando liberação da Peneira Fina pelo servidor.'};
   const focusCost=Number(v.nucleo.foco?.porItem || 10),balance=Number(v.nucleo.foco?.v || 0);
   const charges=catalog?.cargas;
   const distribution=x=>Array.isArray(x) && x.length===5 && x.every(n=>Number.isFinite(Number(n)) && Number(n)>=0);
@@ -146,6 +150,9 @@ function stellarFragmentUseAllowed(plan){
 'use strict';
 function gatherRecipeCandidates(v,o={}) {
   const p=v?.nucleo?.prof,f=p?.fila;
+  // This explicit demand is for one sieve, even with zero XP or a full queue.
+  // It is built by the fixed Stellar Fragment policy, never by an order or URL.
+  if(o.fragmentoEstelar && o.stellarPriority){const r=o.stellarGather;return r?.rid==='pes-29' && r.n===1 && r.purpose==='stellar' && Array.isArray(r.costs) && r.costs.length===2 && r.costs.every(c=>c.grau===2 && ((c.id==='enchanted gem' && c.qtd===13) || (c.id==='semente' && c.qtd===5))) && new Set(r.costs.map(c=>c.id)).size===2?[r]:[];}
   if(!p || !f || (Number(f.livres?.vagas)||0)+(Number(f.livres?.espera)||0)<=0)return [];
   const n=(Number(f.livres?.vagas)||0)+(Number(f.livres?.espera)||0);
   const npc=o.npc===false?[]:(v.ped?.npc || []).filter(x=>!x.feito && x.tem<x.n);
@@ -363,7 +370,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
   }
   async function nextGatherRecipe(v,ticket){
     const s=state(),allowed=await window.IPM_HUNTS.liberadas();
-    for(const recipe of gatherRecipeCandidates(v,options())){const costs=[];let possible=true;
+    for(const recipe of gatherRecipeCandidates(v,{...options(),stellarGather:stellarDemand,stellarPriority})){const costs=[];let possible=true;
       for(const c of recipe.costs){if(c.tem>=c.qtd){costs.push(c);continue;}const origin=await materialOrigin(c,true),zones=gatherEligibleZones(origin,huntCatalog,allowed,s.player.level);if(!zones.length){possible=false;break;}costs.push({...c,tem:Number(origin.tem)||0});}
       if(ticket!==generation || !enabled || !options().gather)return null;if(possible && costs.some(c=>c.tem<c.qtd))return {...recipe,costs};
     }return null;
@@ -395,7 +402,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
     if(!atGatherZone(z))throw Error('Chegada ainda não confirmada; verificará novamente.');
   }
   async function gatherTick(v,ticket){
-    const opt=options(),s=state();
+    const opt={...options(),stellarGather:stellarDemand,stellarPriority},s=state();
     if(observeGatherShiny()){if(gathering)gatherLease();render('Shiny na hunt: aguardando finalizar a captura antes de viajar.');return true;}
     if(!gathering){
       if(!enabled || !opt.gather || Date.now()-originsCheckedAt<60000)return false;
@@ -415,7 +422,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
         }
         if(ticket!==generation || !enabled || !options().gather)return true;
         if(!possible)continue;
-        gathering={origin:{index:zoneNow(),furiosa:s.inst?.furiosa===true,name:s.inst?.nome||s.zone?.name||'hunt original'},rid:recipe.rid,recipe:recipe.name,tipo:recipe.tipo,n:recipe.n,costs,started:Date.now(),settleUntil:Date.now()+17000,phase:'preparing',destination:null};
+        gathering={origin:{index:zoneNow(),furiosa:s.inst?.furiosa===true,name:s.inst?.nome||s.zone?.name||'hunt original'},rid:recipe.rid,recipe:recipe.name,tipo:recipe.tipo,n:recipe.n,purpose:recipe.purpose,costs,started:Date.now(),settleUntil:Date.now()+17000,phase:'preparing',destination:null};
         saveGather();gatherLease();render('Busca de insumos: pausando temporariamente as outras rotas…');return true;
       }
       render('Busca: nenhum craft com todos os insumos faltantes disponíveis em hunts liberadas. Bosses ignorados.');return true;
@@ -423,7 +430,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
     gatherLease();
     if(!huntCatalog)huntCatalog=(await gatherRead('/api/hunts')).zonas;
     if(ticket!==generation)return true;
-    if(!enabled || !opt.gather)gathering.returning=true;
+    if(!enabled || !opt.gather || gathering.purpose==='stellar' && !opt.fragmentoEstelar)gathering.returning=true;
     if(gathering.returning){
       const origin=gathering.origin;render('Voltando para '+origin.name+'…');await gatherTravel(origin,ticket);
       if(ticket===generation && atGatherZone(origin)){gathering=null;saveGather();gatherLease();render(enabled?'Voltou à hunt original. Retomando produção.':'Desligada. Retorno à hunt original concluído.');originsCheckedAt=Date.now();}
@@ -436,6 +443,9 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
     if(gathering.phase==='hunting' && gathering.destination && !atGatherZone(gathering.destination)){
       if(zoneNow()!==gathering.destination.index){gathering=null;saveGather();gatherLease();render('Busca cancelada: hunt alterada fora da Oficina.');return true;}
     }
+    if(stellarDemand && stellarPriority && gathering.purpose!=='stellar'){
+      Object.assign(gathering,{rid:stellarDemand.rid,recipe:stellarDemand.name,tipo:null,n:1,purpose:'stellar',costs:stellarDemand.costs});saveGather();
+    }
     let target=null,all=true;
     for(const c of gathering.costs){const origin=await materialOrigin(c,true);if(ticket!==generation)return true;
       c.tem=Number(origin.tem)||0;
@@ -446,10 +456,11 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
       }
     }
     if(all){
+      if(gathering.purpose==='stellar'){gathering.costs=[];if(stellarDemand){saveGather();render('Insumos da peneira reunidos; aguardando vaga prioritária…');return false;}gathering.returning=true;saveGather();render('Insumos da peneira concluídos. Voltando à hunt original…');return true;}
       const plan=professionPlan(v,{...opt,craftType:state()?.active?.tmArea},window.P2.dados);
       if(plan.op){gathering.costs=[];saveGather();render('Insumos reunidos; preenchendo a bancada antes de voltar…');return false;}
       const next=await nextGatherRecipe(v,ticket);if(ticket!==generation)return true;
-      if(next){Object.assign(gathering,{rid:next.rid,recipe:next.name,tipo:next.tipo,n:next.n,costs:next.costs});saveGather();render('Continuando a fila de insumos: '+next.name+'…');return true;}
+      if(next){Object.assign(gathering,{rid:next.rid,recipe:next.name,tipo:next.tipo,n:next.n,purpose:next.purpose,costs:next.costs});saveGather();render('Continuando a fila de insumos: '+next.name+'…');return true;}
       gathering.returning=true;saveGather();render('Fila de recursos concluída. Voltando à hunt original…');return true;
     }
     const destination={index:target.zone.i,name:target.zone.n,furiosa:gatherHasAoE(s)};
@@ -459,13 +470,14 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
     gathering.phase='hunting';saveGather();return true;
   }
   const panel=document.createElement('section');panel.id='ipm-auto-prof';panel.className='moon-panel';moonPanelTheme();
-  panel.innerHTML=`<div class="moon-head" data-handle><span data-icon></span><span class="moon-title">Oficina Automática<span class="moon-dot"></span></span><button data-close title="Fechar painel">×</button></div><div class="moon-body"><div class="moon-state"><span data-mode>Desligada</span><span data-prof>Detectando profissão…</span></div><p class="moon-note">Bancada prioriza o maior XP por craft. Busca completa a fila antes de voltar.</p><label class="moon-line">Bancada e coleta<input type="checkbox" data-opt="bench" checked></label><label class="moon-line" title="Melhora a qualidade usando o Foco disponível; continua sem Foco quando acabar.">Usar Foco automaticamente<input type="checkbox" data-opt="focus" checked></label><label class="moon-line">Pedidos de NPC<input type="checkbox" data-opt="npc" checked></label><label class="moon-line">Pedidos de jogadores<input type="checkbox" data-opt="public" checked></label><label class="moon-line">Estufa · plantio sem teto<input type="checkbox" data-opt="garden" checked></label><label class="moon-line">Expedições automáticas<input type="checkbox" data-opt="exped" checked></label><label class="moon-line" data-route-row>Rota da expedição<select data-route><option value="media">Caverna de Cristal</option></select></label><label class="moon-line">Usar Mapa Antigo<input type="checkbox" data-opt="expedMap" checked></label><label class="moon-line">Buscar insumos nas hunts<input type="checkbox" data-opt="gather"></label><label class="moon-line" title="Converte 3 Fragmentos Estelares T5 em 1 T6. Fabrica Peneira Fina quando possível, mesmo sem XP, sem comprar itens nem usar chaves.">Fabricar Fragmento Estelar?<input type="checkbox" data-opt="fragmentoEstelar"></label><div class="moon-note" data-stellar hidden></div><button class="moon-go" data-toggle>Ligar automação</button><div class="moon-detail" role="status" data-status>Começa desligada. Sua escolha fica salva por personagem.</div><div class="moon-foot">Sem compras de itens, diamantes ou pontos de talento.<br>Dinheiro para adubo e provisões de expedição; sem teto acumulado.<br><span data-focus>Foco: aguardando dados</span><br><span data-budget>Adubo gasto: $0</span></div></div>`;
+  panel.innerHTML=`<div class="moon-head" data-handle><span data-icon></span><span class="moon-title">Oficina Automática<span class="moon-dot"></span></span><button data-close title="Fechar painel">×</button></div><div class="moon-body"><div class="moon-state"><span data-mode>Desligada</span><span data-prof>Detectando profissão…</span></div><p class="moon-note">Bancada prioriza o maior XP por craft. Busca completa a fila antes de voltar.</p><label class="moon-line">Bancada e coleta<input type="checkbox" data-opt="bench" checked></label><label class="moon-line" title="Melhora a qualidade usando o Foco disponível; continua sem Foco quando acabar.">Usar Foco automaticamente<input type="checkbox" data-opt="focus" checked></label><label class="moon-line">Pedidos de NPC<input type="checkbox" data-opt="npc" checked></label><label class="moon-line">Pedidos de jogadores<input type="checkbox" data-opt="public" checked></label><label class="moon-line">Estufa · plantio sem teto<input type="checkbox" data-opt="garden" checked></label><label class="moon-line">Expedições automáticas<input type="checkbox" data-opt="exped" checked></label><label class="moon-line" data-route-row>Rota da expedição<select data-route><option value="media">Caverna de Cristal</option></select></label><label class="moon-line">Usar Mapa Antigo<input type="checkbox" data-opt="expedMap" checked></label><label class="moon-line">Buscar insumos nas hunts<input type="checkbox" data-opt="gather"></label><label class="moon-line" title="Converte 3 Fragmentos Estelares T5 em 1 T6. Fabrica Peneira Fina quando possível, mesmo sem XP, sem comprar itens nem usar chaves. Com Buscar insumos nas hunts ligado, busca Fada T2 e Semente T2.">Fabricar Fragmento Estelar?<input type="checkbox" data-opt="fragmentoEstelar"></label><div class="moon-note" data-stellar hidden></div><button class="moon-go" data-toggle>Ligar automação</button><div class="moon-detail" role="status" data-status>Começa desligada. Sua escolha fica salva por personagem.</div><div class="moon-foot">Sem compras de itens, diamantes ou pontos de talento.<br>Dinheiro para adubo e provisões de expedição; sem teto acumulado.<br><span data-focus>Foco: aguardando dados</span><br><span data-budget>Adubo gasto: $0</span></div></div>`;
   function hammerIcon(){const c=document.createElement('canvas');c.width=c.height=32;c.style.imageRendering='pixelated';const g=c.getContext('2d'),im=new Image();im.onload=()=>{if(g){g.imageSmoothingEnabled=false;g.drawImage(im,0,0,32,32);}};im.src='data:image/png;base64,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';return c;}
   panel.querySelector('[data-icon]').replaceWith(hammerIcon());document.body.appendChild(panel);
   addMoonDockButton('profissoes','Oficina Automática — Martelo',hammerIcon(),panel);
   moonDock().drag(panel,panel.querySelector('[data-handle]'),{storageKey:'ipm-auto-prof-position-v1'});
   panel.querySelector('[data-close]').onclick=()=>{panel.hidden=true;moonDock().sync();};
   const status=panel.querySelector('[data-status]'),toggle=panel.querySelector('[data-toggle]');
+  let stellarDemand=null,stellarPriority=false;
   let owner='',enabled=false,busy=false,generation=0,lastRead=0,lastView=null,suspended=false,plantSpent=0;
   const inputs=[...panel.querySelectorAll('[data-opt]')];
   const routeSelect=panel.querySelector('[data-route]');
@@ -498,13 +510,13 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
       if(ticket!==generation || account!==owner || !v?.ok)return;
       lastView=v;const focus=v.nucleo?.foco;panel.querySelector('[data-focus]').textContent=focus?'Foco: '+focus.v+'/'+focus.max+' · '+focus.porItem+' por item':'Foco indisponível';professionOptions(v);const p=v.nucleo?.prof;panel.querySelector('[data-prof]').textContent=p?p.nome+' · Nv '+p.nivel:'Sem profissão';
       if((!enabled && !gathering) || suspended)return;
-      const opt=options(),stellarNote=panel.querySelector('[data-stellar]');stellarNote.hidden=!opt.fragmentoEstelar;let stellar=null;
-      if(enabled && opt.fragmentoEstelar){try{const origin=await materialOrigin({id:'fragmento estelar',grau:5},true);if(ticket!==generation || account!==owner || !enabled)return;stellar=stellarFragmentPlan(v,origin,window.P2.dados,opt);stellarNote.textContent='Fragmento Estelar: '+(stellar.label || stellar.wait);}catch(e){stellarNote.textContent='Fragmento Estelar: aguardando estoque — '+e.message;}}
+      const opt=options(),stellarNote=panel.querySelector('[data-stellar]');stellarNote.hidden=!opt.fragmentoEstelar;let stellar=null;stellarDemand=null;stellarPriority=false;
+      if(enabled && opt.fragmentoEstelar){try{const origin=await materialOrigin({id:'fragmento estelar',grau:5},true);if(ticket!==generation || account!==owner || !enabled)return;stellar=stellarFragmentPlan(v,origin,window.P2.dados,opt);stellarDemand=stellar.gatherRecipe || null;stellarPriority=stellar.priority===true;stellarNote.textContent='Fragmento Estelar: '+(stellar.label || stellar.wait);}catch(e){stellarNote.textContent='Fragmento Estelar: aguardando estoque — '+e.message;}}
       const normal=professionPlan(v,{...opt,craftType:state()?.active?.tmArea},window.P2.dados);
-      const plan=normal.op==='coletar'?normal:stellar?.op?stellar:normal;
-      if(!stellar?.op && !['expMandar','expAbrir'].includes(plan.op) && (gathering || !plan.op && options().gather) && await gatherTick(v,ticket))return;
+      const plan=normal.op==='coletar'?normal:stellar?.op?stellar:stellarPriority && ['fazer','pedFabricar','pedAceitar'].includes(normal.op)?{wait:stellar.wait}:normal;
+      if(!stellar?.op && !['coletar','expMandar','expAbrir'].includes(plan.op) && (gathering || !plan.op && options().gather) && await gatherTick(v,ticket))return;
       if(!enabled)return;
-      if(!plan.op){render(plan.wait);return;}
+      if(!plan.op){render(stellarPriority?stellar.wait:plan.wait);return;}
       if(!allowedOps.has(plan.op) || (plan.args?.foco===true && !['fazer','pedFabricar'].includes(plan.op)) || plan.args?.pagar || plan.args?.confirmo)throw Error('Ação não permitida.');
       if(plan.op==='usar' && (!options().fragmentoEstelar || !stellarFragmentUseAllowed(plan)))throw Error('Conversão de fragmento não permitida.');
       if(plan.op==='estufaViva' && plan.args.on!==false)throw Error('Replantio pago não permitido.');
