@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Poke Moon - Oficina Automática
 // @namespace    local.pokemoon.profissoes
-// @version      1.6.1
-// @description  Bancada, pedidos, estufa, insumos e expedições com Mapa Antigo.
+// @version      1.7.0
+// @description  Bancada, estoque elemental por seleção, ampulheta opcional, pedidos, estufa e expedições.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
 // @grant        none
@@ -75,7 +75,7 @@ function professionPlan(v, options = {}, catalog = null) {
   }
   if (free>0) {
     if(o.bench) {
-      const list=recipes.flatMap(r=>choices(r)).filter(c=>c.cap>0 && Number(c.r.xp?.vFim ?? c.r.xp?.v)>0 && Number(c.r.tempo?.fim)>0);
+      const list=recipes.flatMap(r=>choices(r)).filter(c=>!(o.stockManagedRids||[]).includes(c.r.id) && c.cap>0 && Number(c.r.xp?.vFim ?? c.r.xp?.v)>0 && Number(c.r.tempo?.fim)>0);
       list.sort((a,b)=>Number(b.r.xp.vFim ?? b.r.xp.v)-Number(a.r.xp.vFim ?? a.r.xp.v) || a.r.tempo.fim-b.r.tempo.fim || b.r.nivel-a.r.nivel);
       if(list.length) return craft(list[0],list[0].cap,'Enchendo fila: '+list[0].r.nome);
     }
@@ -101,6 +101,46 @@ function professionPlan(v, options = {}, catalog = null) {
   const garden=v.estufa?.pode && o.garden && (v.estufa.cant || []).some(c=>c.vazio) && !(Number(v.estufa.adubo?.gratisHoje)>0) && v.estufa.adubo?.porGrau>0;
   return {wait:(free?'Aguardando insumos ou receita com XP.':'Fila cheia; aguardando conclusão.')+(garden?' Estufa: saldo ou insumos; aguardando plantio elegível.':'')};
 }
+
+const professionElements={normal:'Normal',fire:'Fogo',water:'Água',electric:'Elétrico',grass:'Planta',ice:'Gelo',fighting:'Lutador',poison:'Venenoso',ground:'Terra',flying:'Voador',psychic:'Psíquico',bug:'Inseto',rock:'Pedra',ghost:'Fantasma',dragon:'Dragão',dark:'Sombrio',steel:'Aço',fairy:'Fada'};
+function combatStockPlan(v,o={},catalog={}){
+  const empty={managedRids:[]};if(v?.nucleo?.prof?.id!=='herborista')return empty;
+  const p=v.nucleo.prof,queue=p.fila?.itens||[],free=Math.max(0,Number(p.fila?.livres?.vagas)||0)+Math.max(0,Number(p.fila?.livres?.espera)||0),goal=10;
+  const selected=[['her-23',o.defenseTypes],['her-11',o.offenseTypes]].flatMap(([rid,types])=>[...new Set(Array.isArray(types)?types:[])].filter(t=>Object.hasOwn(professionElements,t)).map(tipo=>({rid,tipo})));
+  const managedRids=[...new Set(selected.map(x=>x.rid))];let pending=null;
+  for(const {rid,tipo}of selected){
+    const r=p.receitas?.find(x=>x.id===rid),def=catalog.profissoes?.herborista?.receitas?.find(x=>x.id===rid);
+    if(!r||r.trancada||['bloq','tal','rara'].includes(r.estado)||def?.classe!=='consumivel'||def?.tipo!==true)continue;
+    const key='p2:'+rid+'@'+tipo;
+    const owned=(v.cons?.mochila?.combate||[]).filter(x=>x.chave===key).reduce((s,x)=>s+Math.max(0,Number(x.n)||0),0);
+    const queued=queue.filter(x=>x.chave===key||x.rid===rid&&x.tipo===tipo).reduce((s,x)=>s+Math.max(0,Number(x.n)||0),0);
+    const need=Math.max(0,goal-owned-queued);if(!need)continue;
+    const variant=Array.isArray(r.tipos)?r.tipos.find(x=>x.tipo===tipo):null,costs=variant?.custo||r.custo;
+    if(!Array.isArray(costs)||!costs.length||costs.some(c=>!c.id||/(gold|diam|dinheiro|money|coin)/i.test(c.id)||!Number.isFinite(Number(c.qtd))||Number(c.qtd)<=0||!Number.isFinite(Number(c.tem))||Number(c.tem)<0)||[r,variant||{}].some(x=>['gold','diamonds','dinheiro','diamante','preco','taxaCraft'].some(k=>Number(x[k])>0)))continue;
+    const label=(rid==='her-23'?'Defesa':'Ofensivo')+' '+professionElements[tipo]+' · '+(owned+queued)+'/10';
+    const cap=Math.min(...costs.map(c=>Math.floor(Number(c.tem)/Number(c.qtd))),Number(variant?.maxN??r.maxN)||0,Number(variant?.maxQtd??r.maxQtd)||0,free,need);
+    if(r.estado==='pronto'&&cap>=1){
+      const focusCost=Number(v.nucleo.foco?.porItem||10),balance=Number(v.nucleo.foco?.v||0);
+      const improves=r.fixa==null&&Array.isArray(r.chances)&&Array.isArray(r.chancesFoco)&&r.chancesFoco.reduce((s,n,q)=>s+Number(n)*q,0)>r.chances.reduce((s,n,q)=>s+Number(n)*q,0);
+      const foco=o.focus===true&&improves&&focusCost>0&&balance>=focusCost;
+      const n=Math.floor(Math.min(cap,foco?Math.floor(balance/focusCost):Infinity));
+      return {managedRids,op:'fazer',args:{rid,n,tipo,foco},combatStock:true,label:'Estoque: '+label+(foco?' · com Foco':'')};
+    }
+    if(!pending){const n=need;pending={managedRids,wait:'Estoque: '+label+(free?' · faltam insumos.':' · aguardando vaga.'),gatherRecipe:costs.some(c=>Number(c.tem)<Number(c.qtd)*n)?{rid,tipo,n,name:r.nome+' ('+professionElements[tipo]+')',purpose:'combat',priority:2,score:0,costs:costs.map(c=>({id:c.id,grau:Number(c.grau)||1,qtd:Number(c.qtd)*n,tem:Number(c.tem)||0}))}:null};}
+  }
+  return pending||{managedRids,wait:managedRids.length?'Estoque elemental completo: 10 por seleção (mochila + bancada).':null};
+}
+function professionHourglassPlan(v,o={}){
+  if(o.hourglass!==true)return null;
+  const tool=v?.cons?.imediatos?.find(x=>x.chave==='p2:pes-18'&&x.rid==='pes-18'&&x.pede==='fila');
+  if(!tool||!Array.isArray(tool.porQ))return null;
+  const now=Number(v.agora);if(!Number.isFinite(now))return null;
+  const limits=[65,75,85,100,120].map(n=>n*60000),quality=q=>Number.isSafeInteger(Number(tool.porQ[q]))&&Number(tool.porQ[q])>0;
+  const candidates=(v.nucleo?.prof?.fila?.itens||[]).filter(x=>x.id!=null&&!x.pronto&&!x.espera&&Number.isFinite(Number(x.fim))&&Number(x.ini)<=now).map(x=>({x,left:Number(x.fim)-now})).filter(x=>x.left>=300000).sort((a,b)=>b.left-a.left);
+  for(const {x,left}of candidates){const q=limits.findIndex((limit,q)=>quality(q)&&left<=limit);if(q>=0)return {op:'usar',args:{chave:'p2:pes-18',q,id:String(x.id)},hourglass:true,label:'Usando ampulheta: '+(x.nome||'item da bancada')+' · poupa '+Math.ceil(left/60000)+' min'};}
+  return null;
+}
+function professionHourglassUseAllowed(plan){const a=plan?.args;return plan?.hourglass===true&&plan.op==='usar'&&a?.chave==='p2:pes-18'&&Number.isInteger(a.q)&&a.q>=0&&a.q<5&&typeof a.id==='string'&&a.id.length>0&&Object.keys(a).length===3;}
 
 // Only this material/grade and this consumable are authorized by this option.
 function stellarFragmentPlan(v, origin, catalog, options={}) {
@@ -160,12 +200,13 @@ function gatherRecipeCandidates(v,o={}) {
   // This explicit demand is for a bounded sieve batch, even with zero XP or a full queue.
   // It is built by the fixed Stellar Fragment policy, never by an order or URL.
   if(o.fragmentoEstelar && o.stellarPriority){const r=o.stellarGather;return r?.rid==='pes-29' && Number.isInteger(r.n) && r.n>=1 && r.n<=50 && r.purpose==='stellar' && Array.isArray(r.costs) && r.costs.length===2 && r.costs.every(c=>c.grau===2 && ((c.id==='enchanted gem' && c.qtd===13*r.n) || (c.id==='semente' && c.qtd===5*r.n))) && new Set(r.costs.map(c=>c.id)).size===2?[r]:[];}
+  if(o.combatGather){const r=o.combatGather;return r.purpose==='combat'&&['her-11','her-23'].includes(r.rid)&&v?.nucleo?.prof?.id==='herborista'&&Object.hasOwn(professionElements,r.tipo)&&Number.isInteger(r.n)&&r.n>=1&&r.n<=10&&Array.isArray(r.costs)&&r.costs.length&&r.costs.every(c=>c.id&&c.qtd>0&&c.grau>=1&&c.grau<=6&&!/(gold|diam|dinheiro|money|coin)/i.test(c.id))?[r]:[];}
   if(!p || !f || (Number(f.livres?.vagas)||0)+(Number(f.livres?.espera)||0)<=0)return [];
   const n=(Number(f.livres?.vagas)||0)+(Number(f.livres?.espera)||0);
   const npc=o.npc===false?[]:(v.ped?.npc || []).filter(x=>!x.feito && x.tem<x.n);
   const pending=o.public===false?[]:(v.ped?.aceitos || []).filter(x=>x.pronto+(x.naFila||0)<x.n);
   const needed=new Set([...npc,...pending].map(x=>x.rid || /^p2:([^@~]+)/.exec(x.chave||'')?.[1]));
-  return (p.receitas||[]).filter(r=>!r.trancada && !['bloq','tal','rara'].includes(r.estado) && (needed.has(r.id) || o.bench!==false && Number(r.xp?.vFim ?? r.xp?.v)>0))
+  return (p.receitas||[]).filter(r=>!r.trancada && !['bloq','tal','rara'].includes(r.estado) && (needed.has(r.id) || o.bench!==false && !(o.stockManagedRids||[]).includes(r.id) && Number(r.xp?.vFim ?? r.xp?.v)>0))
     .flatMap(r=>(r.tipos || [{tipo:null,custo:r.custo}]).map(t=>({rid:r.id,tipo:t.tipo,n,priority:needed.has(r.id)?1:0,name:t.nome||r.nome,
       score:Number(r.xp?.vFim ?? r.xp?.v)||0,
       costs:(t.custo || r.custo || []).map(c=>({id:c.id,grau:Number(c.grau)||1,qtd:Number(c.qtd)*n,tem:Number(c.tem)||0})),
@@ -377,7 +418,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
   }
   async function nextGatherRecipe(v,ticket){
     const s=state(),allowed=await window.IPM_HUNTS.liberadas();
-    for(const recipe of gatherRecipeCandidates(v,{...options(),stellarGather:stellarDemand,stellarPriority})){const costs=[];let possible=true;
+    for(const recipe of gatherRecipeCandidates(v,{...options(),stellarGather:stellarDemand,stellarPriority,combatGather:combatDemand,stockManagedRids:combatManaged})){const costs=[];let possible=true;
       for(const c of recipe.costs){if(c.tem>=c.qtd){costs.push(c);continue;}const origin=await materialOrigin(c,true),zones=gatherEligibleZones(origin,huntCatalog,allowed,s.player.level);if(!zones.length){possible=false;break;}costs.push({...c,tem:Number(origin.tem)||0});}
       if(ticket!==generation || !enabled || !options().gather)return null;if(possible && costs.some(c=>c.tem<c.qtd))return {...recipe,costs};
     }return null;
@@ -409,7 +450,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
     if(!atGatherZone(z))throw Error('Chegada ainda não confirmada; verificará novamente.');
   }
   async function gatherTick(v,ticket){
-    const opt={...options(),stellarGather:stellarDemand,stellarPriority},s=state();
+    const opt={...options(),stellarGather:stellarDemand,stellarPriority,combatGather:combatDemand,stockManagedRids:combatManaged},s=state();
     if(observeGatherShiny()){if(gathering)gatherLease();render('Shiny na hunt: aguardando finalizar a captura antes de viajar.');return true;}
     if(!gathering){
       if(!enabled || !opt.gather || Date.now()-originsCheckedAt<60000)return false;
@@ -438,6 +479,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
     if(!huntCatalog)huntCatalog=(await gatherRead('/api/hunts')).zonas;
     if(ticket!==generation)return true;
     if(!enabled || !opt.gather || gathering.purpose==='stellar' && !opt.fragmentoEstelar)gathering.returning=true;
+    if(gathering.purpose==='combat'&&(!combatManaged.includes(gathering.rid)||!(gathering.rid==='her-11'?opt.offenseTypes:opt.defenseTypes).includes(gathering.tipo)))gathering.returning=true;
     if(gathering.returning){
       const origin=gathering.origin;render('Voltando para '+origin.name+'…');await gatherTravel(origin,ticket);
       if(ticket===generation && atGatherZone(origin)){gathering=null;saveGather();gatherLease();render(enabled?'Voltou à hunt original. Retomando produção.':'Desligada. Retorno à hunt original concluído.');originsCheckedAt=Date.now();}
@@ -463,6 +505,12 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
       }
     }
     if(all){
+      if(gathering.purpose==='combat'){
+        gathering.costs=[];
+        const next=await nextGatherRecipe(v,ticket);if(ticket!==generation)return true;
+        if(next){Object.assign(gathering,{rid:next.rid,recipe:next.name,tipo:next.tipo,n:next.n,purpose:next.purpose,costs:next.costs});saveGather();render('Continuando a fila de insumos: '+next.name+'…');return true;}
+        gathering.returning=true;saveGather();render('Estoque elemental atendido ou aguardando bancada. Voltando à hunt original…');return true;
+      }
       if(gathering.purpose==='stellar'){gathering.costs=[];if(stellarDemand){saveGather();render('Insumos da peneira reunidos; aguardando vaga prioritária…');return false;}gathering.returning=true;saveGather();render('Insumos da peneira concluídos. Voltando à hunt original…');return true;}
       const plan=professionPlan(v,{...opt,craftType:state()?.active?.tmArea},window.P2.dados);
       if(plan.op){gathering.costs=[];saveGather();render('Insumos reunidos; preenchendo a bancada antes de voltar…');return false;}
@@ -484,13 +532,17 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
   moonDock().drag(panel,panel.querySelector('[data-handle]'),{storageKey:'ipm-auto-prof-position-v1'});
   panel.querySelector('[data-close]').onclick=()=>{panel.hidden=true;moonDock().sync();};
   const status=panel.querySelector('[data-status]'),toggle=panel.querySelector('[data-toggle]');
-  let stellarDemand=null,stellarPriority=false;
+  panel.querySelector('[data-toggle]').insertAdjacentHTML('beforebegin','<label class="moon-line" title="Consome uma ampulheta da mochila para concluir um item ativo que caiba no tempo dela. Poupa ao menos 5 minutos; não compra ampulhetas.">Usar Ampulheta de Bolso<input type="checkbox" data-opt="hourglass"></label><details data-combat-stock><summary style="color:#f4e4b8;cursor:pointer;padding:9px 0">Estoque de consumíveis elementais</summary><p class="moon-note">Mantém 10 de cada seleção, somando mochila e bancada. Fabrica mesmo sem XP. O uso no slot de Combate continua manual.</p><div data-stock-group="defenseTypes"><b>Defensivos · Chá de Escama</b><p class="moon-note">Reduz o dano dos golpes recebidos desses tipos.</p><div data-type-grid></div></div><div data-stock-group="offenseTypes" style="margin-top:12px"><b>Ofensivos · Poção Elemental</b><p class="moon-note">Aumenta o dano dos seus golpes desses tipos.</p><div data-type-grid></div></div><div class="moon-note" data-stock-status></div></details>');
+  for(const group of panel.querySelectorAll('[data-stock-group]')){const grid=group.querySelector('[data-type-grid]');grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:8px 0';for(const [type,name]of Object.entries(professionElements)){const label=document.createElement('label');label.style.cssText='display:flex;gap:5px;align-items:center;font-size:11px';const input=document.createElement('input');input.type='checkbox';input.dataset.element=type;label.append(input,document.createTextNode(name));grid.appendChild(label);}}
+  const selectedTypes=group=>[...panel.querySelectorAll('[data-stock-group="'+group+'"] input:checked')].map(x=>x.dataset.element);
+  let stellarDemand=null,stellarPriority=false,combatDemand=null,combatManaged=[];
   let owner='',enabled=false,busy=false,generation=0,lastRead=0,lastView=null,suspended=false,plantSpent=0;
   const inputs=[...panel.querySelectorAll('[data-opt]')];
   const routeSelect=panel.querySelector('[data-route]');
-  const options=()=>({...Object.fromEntries(inputs.map(i=>[i.dataset.opt,i.checked])),expedRoute:routeSelect.value || 'media'});
+  const options=()=>({...Object.fromEntries(inputs.map(i=>[i.dataset.opt,i.checked])),expedRoute:routeSelect.value || 'media',defenseTypes:selectedTypes('defenseTypes'),offenseTypes:selectedTypes('offenseTypes')});
   function professionOptions(v){
     const id=v?.nucleo?.prof?.id;
+    panel.querySelector('[data-combat-stock]').hidden=id!=='herborista';
     for(const i of inputs){const relevant=i.dataset.opt==='garden'?id==='herborista':['exped','expedMap'].includes(i.dataset.opt)?id==='pesquisador':true;i.disabled=!relevant;i.closest('label').hidden=!relevant;}
     panel.querySelector('[data-route-row]').hidden=id!=='pesquisador';
     const chosen=routeSelect.value || 'media',routes=v?.exped?.rotas || [];
@@ -504,9 +556,10 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
   function save(){if(!owner)return;localStorage.setItem(storageKey(),JSON.stringify({enabled,options:options(),plantSpent}));}
   function bind(){const p=state()?.player;const id=p && String(p.id || p.name || p.nome || '');if(!id || id===owner)return;
     owner=id;generation++;lastRead=0;lastView=null;suspended=false;let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey())||'{}')||{};}catch(_){}
-    routeSelect.replaceChildren(Object.assign(document.createElement('option'),{value:saved.options?.expedRoute || 'media',textContent:'Carregando rotas…'}));plantSpent=Math.max(0,Number(saved.plantSpent)||0);enabled=saved.enabled===true;for(const i of inputs)i.checked=['gather','fragmentoEstelar'].includes(i.dataset.opt)?saved.options?.[i.dataset.opt]===true:saved.options?.[i.dataset.opt]!==false;render(enabled?'Retomando automação salva…':'Desligada. Nenhum recurso será usado.');restoreGather();}
+    routeSelect.replaceChildren(Object.assign(document.createElement('option'),{value:saved.options?.expedRoute || 'media',textContent:'Carregando rotas…'}));plantSpent=Math.max(0,Number(saved.plantSpent)||0);enabled=saved.enabled===true;for(const i of inputs)i.checked=['gather','fragmentoEstelar','hourglass'].includes(i.dataset.opt)?saved.options?.[i.dataset.opt]===true:saved.options?.[i.dataset.opt]!==false;for(const group of panel.querySelectorAll('[data-stock-group]'))for(const input of group.querySelectorAll('input'))input.checked=Array.isArray(saved.options?.[group.dataset.stockGroup])&&saved.options[group.dataset.stockGroup].includes(input.dataset.element);combatDemand=null;combatManaged=[];render(enabled?'Retomando automação salva…':'Desligada. Nenhum recurso será usado.');restoreGather();}
   toggle.onclick=()=>{bind();if(!owner){render('Aguarde o personagem carregar.');return;}enabled=!enabled;generation++;suspended=false;save();render(enabled?'Ligada: verificando profissão e insumos…':'Desligada manualmente. Itens já na bancada continuam no jogo.');if(gathering && !enabled){gathering.returning=true;saveGather();}if(enabled || gathering){lastRead=0;void tick();}};
   inputs.forEach(i=>i.onchange=()=>{save();generation++;suspended=false;lastRead=0;void tick();});
+  panel.querySelectorAll('[data-element]').forEach(i=>i.onchange=()=>{save();generation++;suspended=false;lastRead=0;void tick();});
   const allowedOps=new Set(['fazer','coletar','pedNpc','pedAceitar','pedFabricar','pedEntregar','estufaColher','estufaPlantar','estufaViva','expMandar','expAbrir','usar']);
   async function tick(){
     bind();observeGatherShiny();if(busy || !owner || !window.P2?.ligado?.())return;
@@ -519,15 +572,18 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
       if((!enabled && !gathering) || suspended)return;
       const opt=options(),stellarNote=panel.querySelector('[data-stellar]');stellarNote.hidden=!opt.fragmentoEstelar;let stellar=null,stellarNeed=false;stellarDemand=null;stellarPriority=false;
       if(enabled && opt.fragmentoEstelar){try{const [origin,t6]=await Promise.all([materialOrigin({id:'fragmento estelar',grau:5},true),materialOrigin({id:'fragmento estelar',grau:6},true)]);if(ticket!==generation || account!==owner || !enabled)return;stellarNeed=Number(t6.tem)<50;stellar=stellarFragmentPlan(v,origin,window.P2.dados,{...opt,stellarT6:t6});stellarDemand=stellar.gatherRecipe || null;stellarPriority=stellar.priority===true;stellarNote.textContent='Fragmento Estelar: '+(stellar.label || stellar.wait);}catch(e){stellarNote.textContent='Fragmento Estelar: aguardando estoque — '+e.message;}}
+      const stock=combatStockPlan(v,opt,window.P2.dados);combatDemand=stock.gatherRecipe||null;combatManaged=stock.managedRids||[];
+      panel.querySelector('[data-stock-status]').textContent=stock.label||stock.wait||'Selecione os elementos que deseja fabricar.';
+      const hourglass=professionHourglassPlan(v,opt);
       const normalView=opt.fragmentoEstelar?structuredClone(v):v;
       if(opt.fragmentoEstelar){normalView.nucleo.prof.receitas=normalView.nucleo.prof.receitas.filter(r=>r.id!=='pes-29' && (!stellarNeed || ![...(r.custo||[]),...(r.tipos||[]).flatMap(t=>t.custo||[])].some(c=>c.id==='fragmento estelar' && Number(c.grau)===5 || ['enchanted gem','semente'].includes(c.id) && Number(c.grau)===2)));const f=normalView.nucleo.prof.fila,keep=Math.max(0,Number(stellar?.reserveSlots)||0);f.livres={vagas:Math.max(0,Number(f.livres?.vagas)||0),espera:Math.max(0,Number(f.livres?.espera)||0)};let reserve=keep;for(const k of ['espera','vagas']){const take=Math.min(f.livres[k],reserve);f.livres[k]-=take;reserve-=take;}}
-      const normal=professionPlan(normalView,{...opt,craftType:state()?.active?.tmArea},window.P2.dados);
-      const plan=normal.op==='coletar'?normal:stellar?.op?stellar:normal;
-      if(!(stellarDemand && normal.op==='fazer') && !stellar?.op && !['coletar','expMandar','expAbrir'].includes(plan.op) && (gathering || (stellarDemand || !plan.op) && options().gather) && await gatherTick(normalView,ticket))return;
+      const normal=professionPlan(normalView,{...opt,stockManagedRids:combatManaged,craftType:state()?.active?.tmArea},window.P2.dados);
+      const plan=normal.op==='coletar'?normal:hourglass|| (stellar?.op?stellar:stock.op?stock:normal);
+      if(!(stellarDemand && normal.op==='fazer') && !stellar?.op && !stock.op && !hourglass && !['coletar','expMandar','expAbrir'].includes(plan.op) && (gathering || (stellarDemand || combatDemand || !plan.op) && options().gather) && await gatherTick(normalView,ticket))return;
       if(!enabled)return;
       if(!plan.op){render(stellarPriority?stellar.wait:plan.wait);return;}
       if(!allowedOps.has(plan.op) || (plan.args?.foco===true && !['fazer','pedFabricar'].includes(plan.op)) || plan.args?.pagar || plan.args?.confirmo)throw Error('Ação não permitida.');
-      if(plan.op==='usar' && (!options().fragmentoEstelar || !stellarFragmentUseAllowed(plan)))throw Error('Conversão de fragmento não permitida.');
+      if(plan.op==='usar' && !(options().fragmentoEstelar&&stellarFragmentUseAllowed(plan) || options().hourglass&&professionHourglassUseAllowed(plan)))throw Error('Uso de consumível não permitido.');
       if(plan.op==='estufaViva' && plan.args.on!==false)throw Error('Replantio pago não permitido.');
       if(!enabled || ticket!==generation)return;
       const plantCost=Number(plan.plantCost)||0, expeditionCost=Number(plan.expeditionCost)||0;
@@ -542,6 +598,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
       if(!result || result.err || result.precisaPagar || result.precisaConfirmar) {if(result?.err && plantCost){plantSpent-=plantCost;save();}render('Aguardando: '+(result?.err || 'ação não confirmada')+'. Tentará novamente sem desligar.');return;}
       if(result.gold!=null && v.gold!=null && result.gold<v.gold-reserved || result.diamonds!=null && v.diamonds!=null && result.diamonds<v.diamonds){suspended=true;render('Saldo diminuiu durante a ação. Verificação suspensa; desligue e ligue para revisar.');return;}
       if(plantCost && Number.isFinite(result.r?.adubo) && result.r.adubo>=0 && result.r.adubo<reserved){plantSpent-=reserved-result.r.adubo;save();}
+      if(plan.combatStock&&gathering?.purpose==='combat'&&gathering.rid===plan.args.rid&&gathering.tipo===plan.args.tipo){gathering.costs=[];saveGather();}
       render(plan.label+' ✓');lastRead=Date.now()-12000;
     }catch(e){render('Aguardando conexão: '+e.message+'. Continua ligada.');lastRead=Date.now();}
     finally{busy=false;if(ticket!==generation)lastRead=0;}
@@ -549,6 +606,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
   if(typeof window.IPM_ON_STATE==='function')window.IPM_ON_STATE(()=>{bind();observeGatherShiny();void tick();});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden){lastRead=0;void tick();}});
   setInterval(()=>void tick(),3000);bind();void tick();
+
 
 
 })();
