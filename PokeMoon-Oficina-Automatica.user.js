@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Oficina Automática
 // @namespace    local.pokemoon.profissoes
-// @version      1.7.0
+// @version      1.7.1
 // @description  Bancada, estoque elemental por seleção, ampulheta opcional, pedidos, estufa e expedições.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -532,9 +532,15 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
   moonDock().drag(panel,panel.querySelector('[data-handle]'),{storageKey:'ipm-auto-prof-position-v1'});
   panel.querySelector('[data-close]').onclick=()=>{panel.hidden=true;moonDock().sync();};
   const status=panel.querySelector('[data-status]'),toggle=panel.querySelector('[data-toggle]');
-  panel.querySelector('[data-toggle]').insertAdjacentHTML('beforebegin','<label class="moon-line" title="Consome uma ampulheta da mochila para concluir um item ativo que caiba no tempo dela. Poupa ao menos 5 minutos; não compra ampulhetas.">Usar Ampulheta de Bolso<input type="checkbox" data-opt="hourglass"></label><details data-combat-stock><summary style="color:#f4e4b8;cursor:pointer;padding:9px 0">Estoque de consumíveis elementais</summary><p class="moon-note">Mantém 10 de cada seleção, somando mochila e bancada. Fabrica mesmo sem XP. O uso no slot de Combate continua manual.</p><div data-stock-group="defenseTypes"><b>Defensivos · Chá de Escama</b><p class="moon-note">Reduz o dano dos golpes recebidos desses tipos.</p><div data-type-grid></div></div><div data-stock-group="offenseTypes" style="margin-top:12px"><b>Ofensivos · Poção Elemental</b><p class="moon-note">Aumenta o dano dos seus golpes desses tipos.</p><div data-type-grid></div></div><div class="moon-note" data-stock-status></div></details>');
-  for(const group of panel.querySelectorAll('[data-stock-group]')){const grid=group.querySelector('[data-type-grid]');grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:8px 0';for(const [type,name]of Object.entries(professionElements)){const label=document.createElement('label');label.style.cssText='display:flex;gap:5px;align-items:center;font-size:11px';const input=document.createElement('input');input.type='checkbox';input.dataset.element=type;label.append(input,document.createTextNode(name));grid.appendChild(label);}}
-  const selectedTypes=group=>[...panel.querySelectorAll('[data-stock-group="'+group+'"] input:checked')].map(x=>x.dataset.element);
+  panel.querySelector('[data-toggle]').insertAdjacentHTML('beforebegin','<label class="moon-line" title="Usa uma ampulheta existente para concluir um craft ativo; poupa ao menos 5 minutos.">Usar Ampulheta de Bolso<input type="checkbox" data-opt="hourglass"></label><div data-combat-stock><div class="moon-section">CONSUMÍVEIS · ESTOQUE 10 CADA</div><div class="prof-stock-add"><select data-stock-select aria-label="Consumível e elemento"></select><button type="button" data-stock-add>Add</button></div><div data-stock-list></div><div class="moon-note" data-stock-status></div></div>');
+  let combatSelections={defenseTypes:[],offenseTypes:[]};
+  const selectedTypes=group=>combatSelections[group]||[];
+  const stockSelect=panel.querySelector('[data-stock-select]');
+  for(const [kind,label]of [['defenseTypes','Defensivos · Chá de Escama'],['offenseTypes','Ofensivos · Poção Elemental']]){const group=document.createElement('optgroup');group.label=label;for(const [type,name]of Object.entries(professionElements)){const opt=document.createElement('option');opt.value=kind+':'+type;opt.textContent=(kind==='defenseTypes'?'Defesa':'Ataque')+' · '+name;group.appendChild(opt);}stockSelect.appendChild(group);}
+  function stockList(){const host=panel.querySelector('[data-stock-list]');host.replaceChildren();for(const kind of ['defenseTypes','offenseTypes'])for(const type of selectedTypes(kind)){const row=document.createElement('div');row.className='prof-stock-item';const text=document.createElement('span');text.textContent=(kind==='defenseTypes'?'Defesa':'Ataque')+' · '+professionElements[type];const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.title='Remover '+text.textContent;remove.dataset.stockRemove=kind+':'+type;remove.onclick=()=>{combatSelections[kind]=combatSelections[kind].filter(x=>x!==type);stockChanged();};row.append(text,remove);host.appendChild(row);}if(!host.children.length)host.textContent='Nenhum elemento adicionado.';}
+  function stockChanged(){stockList();save();generation++;suspended=false;lastRead=0;void tick();}
+  panel.querySelector('[data-stock-add]').onclick=()=>{bind();if(!owner)return;const [kind,type]=stockSelect.value.split(':');if(!['defenseTypes','offenseTypes'].includes(kind)||!Object.hasOwn(professionElements,type)||selectedTypes(kind).includes(type))return;combatSelections[kind].push(type);stockChanged();};
+  panel.querySelector('.moon-head').insertAdjacentElement('afterend',toggle);
   let stellarDemand=null,stellarPriority=false,combatDemand=null,combatManaged=[];
   let owner='',enabled=false,busy=false,generation=0,lastRead=0,lastView=null,suspended=false,plantSpent=0;
   const inputs=[...panel.querySelectorAll('[data-opt]')];
@@ -548,7 +554,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
     const chosen=routeSelect.value || 'media',routes=v?.exped?.rotas || [];
     if(id==='pesquisador' && routes.length){routeSelect.replaceChildren(...routes.map(r=>{const o=document.createElement('option');o.value=r.id;o.disabled=r.aberta!==true || !!r.trancada;o.textContent=r.nome+(o.disabled?' · Nv '+r.nivel:'')+' · $'+Number(r.provisoes || 0).toLocaleString('pt-BR');return o;}));routeSelect.value=chosen;if(!routeSelect.value){const o=document.createElement('option');o.value=chosen;o.textContent='Rota indisponível';o.disabled=true;routeSelect.appendChild(o);routeSelect.value=chosen;}}
   }
-  const routeCss=document.createElement('style');routeCss.textContent='#ipm-auto-prof label[hidden]{display:none!important}#ipm-auto-prof select{max-width:180px;background:#101c2a;color:#f7e9c8;border:1px solid #485b77;border-radius:5px;padding:4px}';document.head.appendChild(routeCss);
+  const routeCss=document.createElement('style');routeCss.textContent='#ipm-auto-prof label[hidden]{display:none!important}#ipm-auto-prof select{max-width:180px;background:#101c2a;color:#f7e9c8;border:1px solid #485b77;border-radius:5px;padding:4px}';routeCss.textContent+='#ipm-auto-prof{display:flex;flex-direction:column;overflow:hidden!important;max-height:calc(100vh - 24px)!important}#ipm-auto-prof .moon-head,#ipm-auto-prof>[data-toggle]{flex-shrink:0}#ipm-auto-prof>[data-toggle]{margin:0;border-radius:0;padding:9px}#ipm-auto-prof .moon-body{overflow-y:auto;min-height:0}#ipm-auto-prof [data-combat-stock][hidden]{display:none!important}#ipm-auto-prof .prof-stock-add{display:flex;gap:6px}#ipm-auto-prof .prof-stock-add select{flex:1;min-width:0;max-width:none}#ipm-auto-prof .prof-stock-add button{background:#355d48;color:#eefff3;border:1px solid #7aa380;border-radius:5px;padding:5px 9px}#ipm-auto-prof [data-stock-list]{max-height:96px;overflow:auto;margin-top:6px;color:#aebdd1;font-size:11px}#ipm-auto-prof .prof-stock-item{display:flex;align-items:center;justify-content:space-between;padding:4px 2px;border-bottom:1px solid #293346}#ipm-auto-prof .prof-stock-item button{background:#302632;color:#f2c8c8;border:1px solid #70515b;border-radius:4px;line-height:18px;width:22px;padding:0}';document.head.appendChild(routeCss);
   routeSelect.onchange=()=>{save();generation++;lastRead=0;void tick();};
   const state=()=>typeof K==='object' && K?.player ? K : null;
   const storageKey=()=> 'ipm-auto-prof-v1:'+owner;
@@ -556,10 +562,10 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
   function save(){if(!owner)return;localStorage.setItem(storageKey(),JSON.stringify({enabled,options:options(),plantSpent}));}
   function bind(){const p=state()?.player;const id=p && String(p.id || p.name || p.nome || '');if(!id || id===owner)return;
     owner=id;generation++;lastRead=0;lastView=null;suspended=false;let saved={};try{saved=JSON.parse(localStorage.getItem(storageKey())||'{}')||{};}catch(_){}
-    routeSelect.replaceChildren(Object.assign(document.createElement('option'),{value:saved.options?.expedRoute || 'media',textContent:'Carregando rotas…'}));plantSpent=Math.max(0,Number(saved.plantSpent)||0);enabled=saved.enabled===true;for(const i of inputs)i.checked=['gather','fragmentoEstelar','hourglass'].includes(i.dataset.opt)?saved.options?.[i.dataset.opt]===true:saved.options?.[i.dataset.opt]!==false;for(const group of panel.querySelectorAll('[data-stock-group]'))for(const input of group.querySelectorAll('input'))input.checked=Array.isArray(saved.options?.[group.dataset.stockGroup])&&saved.options[group.dataset.stockGroup].includes(input.dataset.element);combatDemand=null;combatManaged=[];render(enabled?'Retomando automação salva…':'Desligada. Nenhum recurso será usado.');restoreGather();}
+    routeSelect.replaceChildren(Object.assign(document.createElement('option'),{value:saved.options?.expedRoute || 'media',textContent:'Carregando rotas…'}));plantSpent=Math.max(0,Number(saved.plantSpent)||0);enabled=saved.enabled===true;for(const i of inputs)i.checked=['gather','fragmentoEstelar','hourglass'].includes(i.dataset.opt)?saved.options?.[i.dataset.opt]===true:saved.options?.[i.dataset.opt]!==false;for(const kind of ['defenseTypes','offenseTypes'])combatSelections[kind]=[...new Set(Array.isArray(saved.options?.[kind])?saved.options[kind]:[])].filter(type=>Object.hasOwn(professionElements,type));stockList();combatDemand=null;combatManaged=[];render(enabled?'Retomando automação salva…':'Desligada. Nenhum recurso será usado.');restoreGather();}
   toggle.onclick=()=>{bind();if(!owner){render('Aguarde o personagem carregar.');return;}enabled=!enabled;generation++;suspended=false;save();render(enabled?'Ligada: verificando profissão e insumos…':'Desligada manualmente. Itens já na bancada continuam no jogo.');if(gathering && !enabled){gathering.returning=true;saveGather();}if(enabled || gathering){lastRead=0;void tick();}};
   inputs.forEach(i=>i.onchange=()=>{save();generation++;suspended=false;lastRead=0;void tick();});
-  panel.querySelectorAll('[data-element]').forEach(i=>i.onchange=()=>{save();generation++;suspended=false;lastRead=0;void tick();});
+
   const allowedOps=new Set(['fazer','coletar','pedNpc','pedAceitar','pedFabricar','pedEntregar','estufaColher','estufaPlantar','estufaViva','expMandar','expAbrir','usar']);
   async function tick(){
     bind();observeGatherShiny();if(busy || !owner || !window.P2?.ligado?.())return;
@@ -606,6 +612,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
   if(typeof window.IPM_ON_STATE==='function')window.IPM_ON_STATE(()=>{bind();observeGatherShiny();void tick();});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden){lastRead=0;void tick();}});
   setInterval(()=>void tick(),3000);bind();void tick();
+
 
 
 
