@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Oficina Automática
 // @namespace    local.pokemoon.profissoes
-// @version      1.6.0
+// @version      1.6.1
 // @description  Bancada, pedidos, estufa, insumos e expedições com Mapa Antigo.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -523,7 +523,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
       if(opt.fragmentoEstelar){normalView.nucleo.prof.receitas=normalView.nucleo.prof.receitas.filter(r=>r.id!=='pes-29' && (!stellarNeed || ![...(r.custo||[]),...(r.tipos||[]).flatMap(t=>t.custo||[])].some(c=>c.id==='fragmento estelar' && Number(c.grau)===5 || ['enchanted gem','semente'].includes(c.id) && Number(c.grau)===2)));const f=normalView.nucleo.prof.fila,keep=Math.max(0,Number(stellar?.reserveSlots)||0);f.livres={vagas:Math.max(0,Number(f.livres?.vagas)||0),espera:Math.max(0,Number(f.livres?.espera)||0)};let reserve=keep;for(const k of ['espera','vagas']){const take=Math.min(f.livres[k],reserve);f.livres[k]-=take;reserve-=take;}}
       const normal=professionPlan(normalView,{...opt,craftType:state()?.active?.tmArea},window.P2.dados);
       const plan=normal.op==='coletar'?normal:stellar?.op?stellar:normal;
-      if(!(stellarDemand && normal.op==='fazer') && !stellar?.op && !['coletar','expMandar','expAbrir'].includes(plan.op) && (gathering || (stellarDemand || !plan.op) && options().gather) && await gatherTick(v,ticket))return;
+      if(!(stellarDemand && normal.op==='fazer') && !stellar?.op && !['coletar','expMandar','expAbrir'].includes(plan.op) && (gathering || (stellarDemand || !plan.op) && options().gather) && await gatherTick(normalView,ticket))return;
       if(!enabled)return;
       if(!plan.op){render(stellarPriority?stellar.wait:plan.wait);return;}
       if(!allowedOps.has(plan.op) || (plan.args?.foco===true && !['fazer','pedFabricar'].includes(plan.op)) || plan.args?.pagar || plan.args?.confirmo)throw Error('Ação não permitida.');
@@ -549,5 +549,6 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
   if(typeof window.IPM_ON_STATE==='function')window.IPM_ON_STATE(()=>{bind();observeGatherShiny();void tick();});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden){lastRead=0;void tick();}});
   setInterval(()=>void tick(),3000);bind();void tick();
+
 
 })();
