@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Revive Automático
 // @namespace    local.pokemoon.revive-auto
-// @version      1.0.0
+// @version      1.0.1
 // @description  Cura o Pokémon derrotado após a troca automática e retoma a hunt original.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -208,8 +208,13 @@
     /^(fainted|defeated)$/i.test(p.status ?? '') || (Number.isFinite(hp(p)) && hp(p) <= 0));
   const member = (s, target) => id(s?.active) === target
     ? s.active : s?.team?.find(p => id(p) === target);
-  const hunt = s => Number.isInteger(s?.inst?.zona) && s.inst.zona >= 0
-    ? { index: s.inst.zona, furiosa: s.inst.furiosa === true } : null;
+  const hunt = s => {
+    const index = Number.isInteger(s?.inst?.zona) ? s.inst.zona : s?.zone?.index;
+    return Number.isInteger(index) && index >= 0
+      ? { index, furiosa:s.inst?.furiosa === true } : null;
+  };
+  const nurseHere = () => typeof gameState === 'object' && Array.isArray(gameState.npcs)
+    ? gameState.npcs.find(npc => npc.role === 'heal' && npc.name) : null;
   const sameHunt = (a, b) => !!a && !!b && a.index === b.index && a.furiosa === b.furiosa;
 
   moonPanelTheme();
@@ -256,13 +261,13 @@
     try {
       const url = new URL(input?.url ?? input, location.href);
       switching = enabled && url.origin === location.origin && url.pathname === '/api/action' &&
-        typeof options?.body === 'string' && JSON.parse(options.body)?.action === 'setActive';
+        typeof options?.body === 'string' && ['setActive', 'goCity', 'selectZone'].includes(JSON.parse(options.body)?.action);
     } catch (_) {}
     if (!switching) return nativeFetch.apply(this, arguments);
     tracked = null;
     recovery = null;
     manualPending++;
-    render('Troca solicitada. Aguardando a próxima hunt ativa.');
+    render('Troca ou viagem solicitada. Aguardando a próxima hunt ativa.');
     // The game applies the response after fetch resolves and parses its body.
     return Promise.resolve().then(() => nativeFetch.call(this, input, options))
       .finally(() => setTimeout(() => { manualPending--; }, 1500));
@@ -309,8 +314,7 @@
         if (await request('goCity', {})) plan.stage = 'heal';
         break;
       case 'heal': {
-        const nurse = typeof gameState === 'object' &&
-          gameState.npcs?.find(npc => npc.role === 'heal' && npc.name);
+        const nurse = nurseHere();
         if (!nurse) { render('Aguardando a enfermeira no Centro Pokémon…'); break; }
         render('Curando o Pokémon derrotado…');
         if (!await request('npcTalk', { name:nurse.name })) break;
@@ -332,10 +336,27 @@
       case 'return':
         render('Voltando à hunt original…');
         if (!await request('selectZone', { ...plan.hunt, confirmo:false, naoPerguntar:false })) break;
-        if (!sameHunt(hunt(state()), plan.hunt)) throw Error('O jogo não confirmou a chegada à hunt.');
+        plan.stage = 'verify';
+        plan.retryAt = Date.now() + 2500;
+        break;
+      case 'verify': {
+        const url = new URL('/api/state', location.origin);
+        url.searchParams.set('token', plan.token);
+        const response = await nativeFetch.call(window, url, {
+          credentials:'same-origin', cache:'no-store', signal:AbortSignal.timeout(15000),
+        });
+        const result = await response.json();
+        if (!valid()) break;
+        const actual = result.state ?? result;
+        if (!response.ok || result.err || !actual.player ||
+            !sameHunt(hunt(actual), plan.hunt) || id(actual.active) !== plan.id ||
+            actual.fainted || down(actual.active) || !(hp(actual.active) > 0) || !actual.auto?.hunt) {
+          throw Error('O jogo não confirmou a hunt ativa com o Pokémon recuperado.');
+        }
         recovery = null;
         render('Pokémon curado e hunt retomada.');
         break;
+      }
     }
   }
 
@@ -350,22 +371,38 @@
     if (!enabled || busy || manualPending || !token()) return;
     if (!recovery) {
       const s = state(), active = s?.active, activeId = id(active), location = hunt(s);
-      if (!location || !activeId || s.boss?.active || window.__ipmProfessionGatherLease) {
+      if (!s || s.boss?.active || window.__ipmProfessionGatherLease) {
         tracked = null;
         return;
       }
-      if (tracked && sameHunt(tracked.hunt, location)) {
-        if (tracked.id === activeId) {
-          tracked.defeated ||= down(active) || down(member(s, tracked.id)) || !!s.fainted;
-          if (!s.fainted && !down(active) && hp(active) > 0) tracked.defeated = false;
-        } else if ((tracked.defeated || down(member(s, tracked.id))) && hp(active) > 0 && !down(active)) {
-          recovery = { ...tracked, replacement:activeId, owner, token:token(),
-            stage:'city', deadline:Date.now() + 120000, retryAt:0 };
-          tracked = null;
+      if (tracked) {
+        const previous = member(s, tracked.id);
+        const samePokemon = activeId === tracked.id;
+        const defeated = down(previous) || (samePokemon && !!s.fainted) || tracked.defeated;
+        if (sameHunt(tracked.hunt, location)) {
+          if (samePokemon) {
+            tracked.defeated = down(previous) || !!s.fainted || (tracked.defeated && !(hp(active) > 0));
+          } else if (defeated && activeId && hp(active) > 0 && !down(active)) {
+            recovery = { ...tracked, replacement:activeId, owner, token:token(),
+              stage:'city', deadline:Date.now() + 120000, retryAt:0 };
+          } else if (!activeId && defeated) {
+            tracked.defeated = true;
+            return;
+          }
+        } else if (!location && defeated) {
+          // The server may send the team to the Center without a healthy replacement.
+          tracked.defeated = true;
+          tracked.centerDeadline ??= Date.now() + 15000;
+          if (Date.now() < tracked.centerDeadline) {
+            if (!nurseHere()) return;
+            recovery = { ...tracked, owner, token:token(),
+              stage:'heal', deadline:Date.now() + 120000, retryAt:0 };
+          }
         }
       }
-      if (!recovery && (tracked?.id !== activeId || !sameHunt(tracked?.hunt, location))) {
-        tracked = !s.fainted && !down(active) && hp(active) > 0 && s.auto?.hunt
+      if (recovery) tracked = null;
+      else if (tracked?.id !== activeId || !sameHunt(tracked?.hunt, location)) {
+        tracked = location && activeId && !s.fainted && !down(active) && hp(active) > 0 && s.auto?.hunt
           ? { id:activeId, hunt:location, defeated:false } : null;
       }
     }
