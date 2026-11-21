@@ -1,3 +1,15 @@
+function tbCurrentBossTeam(input) {
+  const {owned,info}=input,ids=info.time||[];
+  if(info.modo&&info.modo!=='individual')throw Error('A equipe retornada não é do Boss individual.');
+  if(ids.length!==6||new Set(ids).size!==6)throw Error('Monte seis Pokémon diferentes no Boss individual antes de simular.');
+  return {label:'Time atual do Boss individual',members:ids.map(id=>{
+    const p=owned.pokes.find(p=>p.id===id),moves=info.golpes?.[id],ability=info.habVale?.[id]||info.habs?.[id];
+    if(!p||!p.pkJ)throw Error('Um Pokémon do Boss individual não está disponível nesta conta.');
+    if(!Array.isArray(moves)||moves.length!==4||new Set(moves).size!==4||moves.some(n=>typeof n!=='string'||!n||/[~;|,]/.test(n)))throw Error('Confira os quatro golpes no Boss individual para '+p.n+'.');
+    if(!ability)throw Error('Não foi possível ler a habilidade de '+p.n+' no Boss individual.');
+    return {id:p.id,name:p.n,moves:[...moves],ability,referencePacket:p.pkJ,level:p.nv,tier:p.k,shiny:p.sh};
+  })};
+}
 function tbPlanTeams(input, roster, data, types) {
   const norm = s => String(s || '').toLowerCase();
   const byName = new Map(roster.map(p => [norm(p.nome), p]));
@@ -97,15 +109,19 @@ async function tbEngineRun(input, send) {
     await BX.novaLuta();
     if(times[0]?.length!==6)throw Error('O motor não montou os seis Pokémon.');
     for(let i=0;i<6;i++)if(times[0][i].nome!==members[i].name)throw Error('O motor alterou a composição.');
+    if(input.mode==='current')for(let i=0;i<6;i++){
+      if(JSON.stringify(times[0][i].kit?.map(g=>g.n))!==JSON.stringify(members[i].moves)||times[0][i].hab!==members[i].ability)throw Error('O motor não reproduziu os golpes ou a habilidade de '+members[i].name+'. Confira a configuração no jogo.');
+    }
     let heartbeat=Date.now();while(!fim && simT<600000){for(let i=0;i<240&&!fim&&simT<600000;i++){const prev=SIM.ticks;passoLogica();if(SIM.ticks===prev)throw Error('Motor de batalha parou.');}if(Date.now()-heartbeat>=2000){send('progress',{text:phase+' · batalha em '+Math.floor(simT/1000)+' s'});heartbeat=Date.now();}await yieldUI();}
     const out=BX.resultado(),errors=[...__tbErrors,...SIM.erros];
     if(errors.length)throw Error('Motor: '+errors[0]);
     return {win:out.vitoria===true,finished:!!out.terminou,seconds:+out.seg||simT/1000,damage:+out.danoTotal||0};
   };
-  const candidates=tbPlanTeams(input,ROSTER,V4_DADOS,TIPOS);
+  const currentMode=input.mode==='current';
+  const candidates=currentMode?[tbCurrentBossTeam(input)]:tbPlanTeams(input,ROSTER,V4_DADOS,TIPOS);
   if(input.testOnly){const result=await trial(candidates[0].members,67891);send('ready',{boss:BOSS_ID,result});return;}
-  let best=null;const seed0=crypto.getRandomValues(new Uint32Array(1))[0]||12345;
-  for(let c=0;c<candidates.length;c++){
+  let best=currentMode?{team:candidates[0]}:null;const seed0=crypto.getRandomValues(new Uint32Array(1))[0]||12345;
+  for(let c=0;!currentMode&&c<candidates.length;c++){
     let wins=0,damage=0,seconds=0;
     for(let i=0;i<3;i++){progress({text:'Triagem de times: '+(c*3+i)+'/'+(candidates.length*3)});const r=await trial(candidates[c].members,(seed0+i*104729)>>>0||1);wins+=r.win?1:0;damage+=r.damage;seconds+=r.seconds;}
     const score={wins,damage,seconds,team:candidates[c]};
@@ -119,7 +135,7 @@ async function tbEngineRun(input, send) {
     const seed=(seed0+(i+100)*104729)>>>0||1;seeds.push(seed);
     const r=await trial(best.team.members,seed);wins+=r.win?1:0;timeouts+=r.finished?0:1;totalSeconds+=r.seconds;
   }
-  send('done',{members:best.team.members,label:best.team.label,wins,losses:50-wins,timeouts,total:50,meanSeconds:totalSeconds/50,seeds,choice:input.choice||'',bossId:input.boss.id,at:Date.now()});
+  send('done',{members:best.team.members,label:best.team.label,mode:currentMode?'current':'auto',screeningTrials:currentMode?0:candidates.length*3,wins,losses:50-wins,timeouts,total:50,meanSeconds:totalSeconds/50,seeds,choice:input.choice||'',bossId:input.boss.id,at:Date.now()});
 }
 function tbSimulationHTML(html, assets, bossId, choice, input, channel) {
   const json=x=>JSON.stringify(x).replace(/</g,'\\u003c');
@@ -139,7 +155,7 @@ function tbSimulationHTML(html, assets, bossId, choice, input, channel) {
   // Boss modules read the choice at registration, so each run gets a fresh realm.
   const modulePath='/arena-proto/arena-boss-'+bossId+'.js';
   const virtualAssets={...assets,[modulePath]:assets[modulePath].replace(/(?:window\.|self\.)?location\.search/g,'window.__tbSearch').replace(/(?:window\.)?parent\.postMessage/g,'window.__tbDiscardMessage')};
-  content+=tag('('+tbEngineBootstrap.toString()+')('+json({search,assets:virtualAssets})+');\n'+tbPlanTeams.toString()+'\nconst __tbSend=(type,data)=>parent.postMessage({channel:'+json(channel)+',type,data},"*");('+tbEngineRun.toString()+')('+json(input)+',__tbSend).catch(e=>__tbSend("error",{message:e.message}));');
+  content+=tag('('+tbEngineBootstrap.toString()+')('+json({search,assets:virtualAssets})+');\n'+tbCurrentBossTeam.toString()+'\n'+tbPlanTeams.toString()+'\nconst __tbSend=(type,data)=>parent.postMessage({channel:'+json(channel)+',type,data},"*");('+tbEngineRun.toString()+')('+json(input)+',__tbSend).catch(e=>__tbSend("error",{message:e.message}));');
   return '<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\' \'unsafe-eval\'; style-src \'unsafe-inline\'; img-src data:; connect-src \'none\'; form-action \'none\'; base-uri \'none\'"><body>'+body+content+'</body>';
 }
 
