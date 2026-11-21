@@ -1,15 +1,16 @@
 // ==UserScript==
 // @name         Poke Moon - Time Boss
 // @namespace    local.pokemoon.team-boss
-// @version      0.1.0
-// @description  Monta times individuais para Suicune, Entei, Jirachi e Zeraora sem iniciar lutas.
+// @version      0.2.0
+// @description  Simula 50 lutas locais contra bosses individuais com os Pokémon da conta e aplica o time sob comando.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
 // @grant        none
 // @sandbox      raw
 // ==/UserScript==
 
-(()=>{'use strict';if(window.__idleMoonTeamBoss)return;window.__idleMoonTeamBoss={starting:true};
+(()=>{
+'use strict';if(window.__idleMoonTeamBoss)return;window.__idleMoonTeamBoss={starting:true};
   // BEGIN SHARED MOON DOCK — embedded in each standalone userscript.
   function moonDock() {
     if (window.__kjdMoonDockV2) return window.__kjdMoonDockV2;
@@ -192,14 +193,15 @@
   function addMoonDockButton(id, label, image, pane) { return moonDock().register(id, label, image, pane); }
   // END SHARED MOON DOCK
 
-const TB_PRESETS={"suicune":{"name":"Suicune","evidence":"Seu time dos prints. 100/100 vitórias na simulação local; resultado real depende dos atributos e das regras do servidor.","members":[{"name":"Wishiwashi (School)","moves":["Dive","Double-Edge","Feint Attack","Aqua Ring"],"ability":"u-wishiwashi-school-base","referencePacket":"eyJhIjoxLjY5OSwicyI6MS40NzYsImQiOjEuMzc4LCJlIjoxLjI0NCwiaCI6MS4xNTcsInYiOjEuNzk3LCJ4IjoxLjA4OCwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywiZm8iOjAuMDE5OCwibiI6WyJTaW5vIENhbG1hbnRlIFQxIiwiSW5mdXPDo28gZGUgRsO6cmlhIFQ1Il19fQ"},{"name":"Blissey","moves":["Last Resort","Helping Hand","Heal Pulse","Soft-Boiled"],"ability":"g-normal","referencePacket":"eyJhIjoyLjMyMSwicyI6MS43MzQsImQiOjIuMDM4LCJlIjowLjg3MSwiaCI6MS4wMzEsInYiOjEuOTE3LCJ4IjoxLjA3NSwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywibiI6WyJJbmZ1c8OjbyBkZSBGw7pyaWEgVDUiXX19"},{"name":"Lapras","moves":["Perish Song","Rain Dance","Body Slam","Life Dew"],"ability":"u-lapras-base","referencePacket":"eyJhIjoxLjU5MiwicyI6MS42MjYsImQiOjEuNzk2LCJlIjoxLjM2NSwiaCI6MS4wNTMsInYiOjEuOTc1LCJ4IjoxLjA4OCwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywibiI6WyJJbmZ1c8OjbyBkZSBGw7pyaWEgVDUiXX19"},{"name":"Milotic","moves":["Aqua Tail","Life Dew","Dragon Tail","Aqua Ring"],"ability":"u-milotic-base","referencePacket":"eyJhIjoxLjU2NiwicyI6MS4zODgsImQiOjEuMjkzLCJlIjoxLjM0OSwiaCI6MS4wNDIsInYiOjEuMTA1LCJ4IjoxLjA4OCwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywibiI6WyJJbmZ1c8OjbyBkZSBGw7pyaWEgVDUiXX19"},{"name":"Dewgong","moves":["Dive","Aqua Ring","Encore","Headbutt"],"ability":"g-water","referencePacket":"eyJhIjoxLjUxNSwicyI6MS4xODMsImQiOjEuMjk1LCJlIjowLjgyMSwiaCI6MC45MjksInYiOjIuODU2LCJ4IjoxLjA4OCwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywibiI6WyJJbmZ1c8OjbyBkZSBGw7pyaWEgVDUiXX19"},{"name":"Vaporeon","moves":["Aqua Ring","Double-Edge","Last Resort","Helping Hand"],"ability":"u-vaporeon-base","referencePacket":"eyJhIjoxLjg0NiwicyI6MS4zNzgsImQiOjEuNDQ1LCJlIjoxLjY1MywiaCI6MS4xNTYsInYiOjEuODI0LCJ4IjoxLjA4OCwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywibiI6WyJJbmZ1c8OjbyBkZSBGw7pyaWEgVDUiXX19"}]},"entei":{"name":"Entei","evidence":"100/100 vitórias na simulação local; resultado real depende dos atributos e das regras do servidor.","members":[{"name":"Tyranitar","moves":["Crunch","Earthquake","Dark Pulse","Iron Defense"],"ability":"u-tyranitar-base","referencePacket":"eyJhIjozLjU2NywicyI6Mi43NDQsImQiOjIuNzc4LCJlIjoyLjIyLCJoIjoyLjQwNCwidiI6My4xMDQsIngiOjEuMzU5LCJ4dCI6eyJidWciOjEuMDgsImRhcmsiOjEuMDUxLCJkcmFnb24iOjEuMDUxLCJlbGVjdHJpYyI6MS4wMywiZmFpcnkiOjEuMDUxLCJmaWdodGluZyI6MS4wOSwiZmlyZSI6MS4wMywiZmx5aW5nIjoxLjExMiwiZ2hvc3QiOjEuMDMsImdyYXNzIjoxLjA2LCJncm91bmQiOjEuMDMsImljZSI6MS4wMywibm9ybWFsIjoxLjExLCJwb2lzb24iOjEuMDMsInBzeWNoaWMiOjEuMDMsInJvY2siOjEuMDMsInN0ZWVsIjoxLjAzLCJ3YXRlciI6MS4xMX0sInJ0Ijp7ImJ1ZyI6MC45NSwiZGFyayI6MC45NSwiZWxlY3RyaWMiOjAuOTUsImZhaXJ5IjowLjk1LCJmaWdodGluZyI6MC45NSwiZmlyZSI6MC45NSwiZmx5aW5nIjowLjk1LCJnaG9zdCI6MC45NSwiZ3Jhc3MiOjAuOTUsImdyb3VuZCI6MC45NSwiaWNlIjowLjk1LCJub3JtYWwiOjAuOTUsInBvaXNvbiI6MC45NSwicHN5Y2hpYyI6MC45NSwicm9jayI6MC45NSwic3RlZWwiOjAuOTUsIndhdGVyIjowLjk1fSwidGIiOjEsImh2Ijp7IngiOjEuMDMzLCJuIjpbIkluZnVzw6NvIGRlIEbDunJpYSBUNSJdfSwidGEiOiJyb2NrIn0"},{"name":"Gyarados","moves":["Waterfall","Crunch","Dragon Dance","Aqua Tail"],"ability":"u-gyarados-base","referencePacket":"eyJhIjoyLjUzNCwicyI6MS4yOTcsImQiOjIuMTI5LCJlIjoxLjUxNCwiaCI6MS4zNDYsInYiOjEuODQ1LCJ4IjoxLjA4OCwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywicmZlIjowLjAyNjQsIm4iOlsiRXNwZWxobyBSw7puaWNvIFQxIiwiSW5mdXPDo28gZGUgRsO6cmlhIFQ1Il19fQ"},{"name":"Rhyperior","moves":["Earthquake","Drill Run","Rock Wrecker","Megahorn"],"ability":"u-rhyperior-base","referencePacket":"eyJhIjoyLjAyMSwicyI6MS44MjYsImQiOjEuNjM3LCJlIjoxLjQ1MiwiaCI6MS4xNTIsInYiOjIuMDk5LCJ4IjoxLjA4OCwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywicmZmIjowLjAxOTgsIm4iOlsiRWxtbyBSb2Nob3NvIFQxIiwiSW5mdXPDo28gZGUgRsO6cmlhIFQ1Il19fQ"},{"name":"Golem","moves":["Earthquake","Rock Blast","Stone Edge","Double-Edge"],"ability":"g-rock","referencePacket":"eyJhIjoxLjgwOSwicyI6MS4wNzgsImQiOjEuMzkxLCJlIjoxLjQwMSwiaCI6MS4wNTMsInYiOjEuODgyLCJ4IjoxLjA4OCwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywibiI6WyJJbmZ1c8OjbyBkZSBGw7pyaWEgVDUiXX19"},{"name":"Milotic","moves":["Aqua Tail","Life Dew","Dragon Tail","Aqua Ring"],"ability":"u-milotic-base","referencePacket":"eyJhIjoxLjU2NiwicyI6MS4zODgsImQiOjEuMjkzLCJlIjoxLjM0OSwiaCI6MS4wNDIsInYiOjEuMTA1LCJ4IjoxLjA4OCwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywibiI6WyJJbmZ1c8OjbyBkZSBGw7pyaWEgVDUiXX19"},{"name":"Vaporeon","moves":["Aqua Ring","Double-Edge","Last Resort","Helping Hand"],"ability":"u-vaporeon-base","referencePacket":"eyJhIjoxLjg0NiwicyI6MS4zNzgsImQiOjEuNDQ1LCJlIjoxLjY1MywiaCI6MS4xNTYsInYiOjEuODI0LCJ4IjoxLjA4OCwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywibiI6WyJJbmZ1c8OjbyBkZSBGw7pyaWEgVDUiXX19"}]},"jirachi":{"name":"Jirachi","evidence":"Composição que você já venceu. 900/900 testes nominais locais; desejo recomendado: Vida.","members":[{"name":"Wishiwashi (School)","moves":["Beat Up","Feint Attack","Helping Hand","Aqua Ring"],"ability":"u-wishiwashi-school-base","referencePacket":"eyJhIjoxLjY5OSwicyI6MS40NzYsImQiOjEuMzc4LCJlIjoxLjI0NCwiaCI6MS4xNTcsInYiOjEuNzk3LCJ4IjoxLjA4OCwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywiZm8iOjAuMDE5OCwibiI6WyJTaW5vIENhbG1hbnRlIFQxIiwiSW5mdXPDo28gZGUgRsO6cmlhIFQ1Il19fQ"},{"name":"Tyranitar","moves":["Crunch","Earthquake","Dark Pulse","Iron Defense"],"ability":"u-tyranitar-base","referencePacket":"eyJhIjozLjU2NywicyI6Mi43NDQsImQiOjIuNzc4LCJlIjoyLjIyLCJoIjoyLjQwNCwidiI6My4xMDQsIngiOjEuMzU5LCJ4dCI6eyJidWciOjEuMDgsImRhcmsiOjEuMDUxLCJkcmFnb24iOjEuMDUxLCJlbGVjdHJpYyI6MS4wMywiZmFpcnkiOjEuMDUxLCJmaWdodGluZyI6MS4wOSwiZmlyZSI6MS4wMywiZmx5aW5nIjoxLjExMiwiZ2hvc3QiOjEuMDMsImdyYXNzIjoxLjA2LCJncm91bmQiOjEuMDMsImljZSI6MS4wMywibm9ybWFsIjoxLjExLCJwb2lzb24iOjEuMDMsInBzeWNoaWMiOjEuMDMsInJvY2siOjEuMDMsInN0ZWVsIjoxLjAzLCJ3YXRlciI6MS4xMX0sInJ0Ijp7ImJ1ZyI6MC45NSwiZGFyayI6MC45NSwiZWxlY3RyaWMiOjAuOTUsImZhaXJ5IjowLjk1LCJmaWdodGluZyI6MC45NSwiZmlyZSI6MC45NSwiZmx5aW5nIjowLjk1LCJnaG9zdCI6MC45NSwiZ3Jhc3MiOjAuOTUsImdyb3VuZCI6MC45NSwiaWNlIjowLjk1LCJub3JtYWwiOjAuOTUsInBvaXNvbiI6MC45NSwicHN5Y2hpYyI6MC45NSwicm9jayI6MC45NSwic3RlZWwiOjAuOTUsIndhdGVyIjowLjk1fSwidGIiOjEsImh2Ijp7IngiOjEuMDMzLCJuIjpbIkluZnVzw6NvIGRlIEbDunJpYSBUNSJdfSwidGEiOiJyb2NrIn0"},{"name":"Houndoom","moves":["Flamethrower","Foul Play","Inferno","Crunch"],"ability":"u-houndoom-base","referencePacket":"eyJhIjoyLjI3MiwicyI6MS42NzMsImQiOjEuNzY0LCJlIjoxLjI4OSwiaCI6MS4wOTcsInYiOjEuMywieCI6MS4xLCJ4dCI6eyJidWciOjEuMDgsImRhcmsiOjEuMDUxLCJkcmFnb24iOjEuMDUxLCJlbGVjdHJpYyI6MS4wMywiZmFpcnkiOjEuMDUxLCJmaWdodGluZyI6MS4wOSwiZmlyZSI6MS4wMywiZmx5aW5nIjoxLjExMiwiZ2hvc3QiOjEuMDMsImdyYXNzIjoxLjA2LCJncm91bmQiOjEuMDMsImljZSI6MS4wMywibm9ybWFsIjoxLjExLCJwb2lzb24iOjEuMDMsInBzeWNoaWMiOjEuMDMsInJvY2siOjEuMDMsInN0ZWVsIjoxLjAzLCJ3YXRlciI6MS4xMX0sInJ0Ijp7ImJ1ZyI6MC45NSwiZGFyayI6MC45NSwiZWxlY3RyaWMiOjAuOTUsImZhaXJ5IjowLjk1LCJmaWdodGluZyI6MC45NSwiZmlyZSI6MC45NSwiZmx5aW5nIjowLjk1LCJnaG9zdCI6MC45NSwiZ3Jhc3MiOjAuOTUsImdyb3VuZCI6MC45NSwiaWNlIjowLjk1LCJub3JtYWwiOjAuOTUsInBvaXNvbiI6MC45NSwicHN5Y2hpYyI6MC45NSwicm9jayI6MC45NSwic3RlZWwiOjAuOTUsIndhdGVyIjowLjk1fSwidGIiOjEsImh2Ijp7IngiOjEuMDMzLCJuIjpbIkluZnVzw6NvIGRlIEbDunJpYSBUNSJdfX0"},{"name":"Hisuian Typhlosion","moves":["Flamethrower","Inferno","Eruption","Overheat"],"ability":"u-hisuian-typhlosion-base","referencePacket":"eyJhIjoyLjAzOSwicyI6MS4zNDUsImQiOjEuNTExLCJlIjoxLjM1MywiaCI6MC45NjMsInYiOjEuNzI0LCJ4IjoxLjEsInh0Ijp7ImJ1ZyI6MS4wOCwiZGFyayI6MS4wNTEsImRyYWdvbiI6MS4wNTEsImVsZWN0cmljIjoxLjAzLCJmYWlyeSI6MS4wNTEsImZpZ2h0aW5nIjoxLjA5LCJmaXJlIjoxLjAzLCJmbHlpbmciOjEuMTEyLCJnaG9zdCI6MS4wMywiZ3Jhc3MiOjEuMDYsImdyb3VuZCI6MS4wMywiaWNlIjoxLjAzLCJub3JtYWwiOjEuMTEsInBvaXNvbiI6MS4wMywicHN5Y2hpYyI6MS4wMywicm9jayI6MS4wMywic3RlZWwiOjEuMDMsIndhdGVyIjoxLjExfSwicnQiOnsiYnVnIjowLjk1LCJkYXJrIjowLjk1LCJlbGVjdHJpYyI6MC45NSwiZmFpcnkiOjAuOTUsImZpZ2h0aW5nIjowLjk1LCJmaXJlIjowLjk1LCJmbHlpbmciOjAuOTUsImdob3N0IjowLjk1LCJncmFzcyI6MC45NSwiZ3JvdW5kIjowLjk1LCJpY2UiOjAuOTUsIm5vcm1hbCI6MC45NSwicG9pc29uIjowLjk1LCJwc3ljaGljIjowLjk1LCJyb2NrIjowLjk1LCJzdGVlbCI6MC45NSwid2F0ZXIiOjAuOTV9LCJ0YiI6MSwiaHYiOnsieCI6MS4wMzMsImZvIjowLjAxOTgsIm4iOlsiU2lubyBDYWxtYW50ZSBUMSIsIkluZnVzw6NvIGRlIEbDunJpYSBUNSJdfX0"},{"name":"Gardevoir","moves":["Mystical Fire","Heal Pulse","Wish","Dream Eater"],"ability":"u-gardevoir-base","referencePacket":"eyJhIjoyLjAzNSwicyI6MS44MDEsImQiOjEuNTY4LCJlIjoxLjIzOCwiaCI6MS4yOTgsInYiOjIuMDUzLCJ4IjoxLjA3NSwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywibiI6WyJJbmZ1c8OjbyBkZSBGw7pyaWEgVDUiXX19"},{"name":"Vaporeon","moves":["Aqua Ring","Helping Hand","Last Resort","Double-Edge"],"ability":"u-vaporeon-base","referencePacket":"eyJhIjoxLjg0NiwicyI6MS4zNzgsImQiOjEuNDQ1LCJlIjoxLjY1MywiaCI6MS4xNTYsInYiOjEuODI0LCJ4IjoxLjA4OCwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywibiI6WyJJbmZ1c8OjbyBkZSBGw7pyaWEgVDUiXX19"}]},"zeraora":{"name":"Zeraora","evidence":"100/100 vitórias na simulação local; resultado real depende dos atributos e das regras do servidor.","members":[{"name":"Rhyperior","moves":["Earthquake","Drill Run","Rock Wrecker","Megahorn"],"ability":"u-rhyperior-base","referencePacket":"eyJhIjoyLjAyMSwicyI6MS44MjYsImQiOjEuNjM3LCJlIjoxLjQ1MiwiaCI6MS4xNTIsInYiOjIuMDk5LCJ4IjoxLjA4OCwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywicmZmIjowLjAxOTgsIm4iOlsiRWxtbyBSb2Nob3NvIFQxIiwiSW5mdXPDo28gZGUgRsO6cmlhIFQ1Il19fQ"},{"name":"Golem","moves":["Earthquake","Rock Blast","Stone Edge","Double-Edge"],"ability":"g-rock","referencePacket":"eyJhIjoxLjgwOSwicyI6MS4wNzgsImQiOjEuMzkxLCJlIjoxLjQwMSwiaCI6MS4wNTMsInYiOjEuODgyLCJ4IjoxLjA4OCwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywibiI6WyJJbmZ1c8OjbyBkZSBGw7pyaWEgVDUiXX19"},{"name":"Tyranitar","moves":["Crunch","Earthquake","Dark Pulse","Iron Defense"],"ability":"u-tyranitar-base","referencePacket":"eyJhIjozLjU2NywicyI6Mi43NDQsImQiOjIuNzc4LCJlIjoyLjIyLCJoIjoyLjQwNCwidiI6My4xMDQsIngiOjEuMzU5LCJ4dCI6eyJidWciOjEuMDgsImRhcmsiOjEuMDUxLCJkcmFnb24iOjEuMDUxLCJlbGVjdHJpYyI6MS4wMywiZmFpcnkiOjEuMDUxLCJmaWdodGluZyI6MS4wOSwiZmlyZSI6MS4wMywiZmx5aW5nIjoxLjExMiwiZ2hvc3QiOjEuMDMsImdyYXNzIjoxLjA2LCJncm91bmQiOjEuMDMsImljZSI6MS4wMywibm9ybWFsIjoxLjExLCJwb2lzb24iOjEuMDMsInBzeWNoaWMiOjEuMDMsInJvY2siOjEuMDMsInN0ZWVsIjoxLjAzLCJ3YXRlciI6MS4xMX0sInJ0Ijp7ImJ1ZyI6MC45NSwiZGFyayI6MC45NSwiZWxlY3RyaWMiOjAuOTUsImZhaXJ5IjowLjk1LCJmaWdodGluZyI6MC45NSwiZmlyZSI6MC45NSwiZmx5aW5nIjowLjk1LCJnaG9zdCI6MC45NSwiZ3Jhc3MiOjAuOTUsImdyb3VuZCI6MC45NSwiaWNlIjowLjk1LCJub3JtYWwiOjAuOTUsInBvaXNvbiI6MC45NSwicHN5Y2hpYyI6MC45NSwicm9jayI6MC45NSwic3RlZWwiOjAuOTUsIndhdGVyIjowLjk1fSwidGIiOjEsImh2Ijp7IngiOjEuMDMzLCJuIjpbIkluZnVzw6NvIGRlIEbDunJpYSBUNSJdfSwidGEiOiJyb2NrIn0"},{"name":"Gardevoir","moves":["Mystical Fire","Heal Pulse","Wish","Dream Eater"],"ability":"u-gardevoir-base","referencePacket":"eyJhIjoyLjAzNSwicyI6MS44MDEsImQiOjEuNTY4LCJlIjoxLjIzOCwiaCI6MS4yOTgsInYiOjIuMDUzLCJ4IjoxLjA3NSwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywibiI6WyJJbmZ1c8OjbyBkZSBGw7pyaWEgVDUiXX19"},{"name":"Blissey","moves":["Last Resort","Helping Hand","Heal Pulse","Soft-Boiled"],"ability":"g-normal","referencePacket":"eyJhIjoyLjMyMSwicyI6MS43MzQsImQiOjIuMDM4LCJlIjowLjg3MSwiaCI6MS4wMzEsInYiOjEuOTE3LCJ4IjoxLjA3NSwieHQiOnsiYnVnIjoxLjA4LCJkYXJrIjoxLjA1MSwiZHJhZ29uIjoxLjA1MSwiZWxlY3RyaWMiOjEuMDMsImZhaXJ5IjoxLjA1MSwiZmlnaHRpbmciOjEuMDksImZpcmUiOjEuMDMsImZseWluZyI6MS4xMTIsImdob3N0IjoxLjAzLCJncmFzcyI6MS4wNiwiZ3JvdW5kIjoxLjAzLCJpY2UiOjEuMDMsIm5vcm1hbCI6MS4xMSwicG9pc29uIjoxLjAzLCJwc3ljaGljIjoxLjAzLCJyb2NrIjoxLjAzLCJzdGVlbCI6MS4wMywid2F0ZXIiOjEuMTF9LCJydCI6eyJidWciOjAuOTUsImRhcmsiOjAuOTUsImVsZWN0cmljIjowLjk1LCJmYWlyeSI6MC45NSwiZmlnaHRpbmciOjAuOTUsImZpcmUiOjAuOTUsImZseWluZyI6MC45NSwiZ2hvc3QiOjAuOTUsImdyYXNzIjowLjk1LCJncm91bmQiOjAuOTUsImljZSI6MC45NSwibm9ybWFsIjowLjk1LCJwb2lzb24iOjAuOTUsInBzeWNoaWMiOjAuOTUsInJvY2siOjAuOTUsInN0ZWVsIjowLjk1LCJ3YXRlciI6MC45NX0sInRiIjoxLCJodiI6eyJ4IjoxLjAzMywibiI6WyJJbmZ1c8OjbyBkZSBGw7pyaWEgVDUiXX19"},{"name":"Noivern","moves":["Roost","Moonlight","Tailwind","Boomburst"],"ability":"g-flying","referencePacket":"eyJhIjoyLjM1NywicyI6MS44NzcsImQiOjEuOTMyLCJlIjowLjk3MiwiaCI6MS4yMSwidiI6Mi4wMywieCI6MS4wNzUsInh0Ijp7ImJ1ZyI6MS4wOCwiZGFyayI6MS4wNTEsImRyYWdvbiI6MS4wNTEsImVsZWN0cmljIjoxLjAzLCJmYWlyeSI6MS4wNTEsImZpZ2h0aW5nIjoxLjA5LCJmaXJlIjoxLjAzLCJmbHlpbmciOjEuMTEyLCJnaG9zdCI6MS4wMywiZ3Jhc3MiOjEuMDYsImdyb3VuZCI6MS4wMywiaWNlIjoxLjAzLCJub3JtYWwiOjEuMTEsInBvaXNvbiI6MS4wMywicHN5Y2hpYyI6MS4wMywicm9jayI6MS4wMywic3RlZWwiOjEuMDMsIndhdGVyIjoxLjExfSwicnQiOnsiYnVnIjowLjk1LCJkYXJrIjowLjk1LCJlbGVjdHJpYyI6MC45NSwiZmFpcnkiOjAuOTUsImZpZ2h0aW5nIjowLjk1LCJmaXJlIjowLjk1LCJmbHlpbmciOjAuOTUsImdob3N0IjowLjk1LCJncmFzcyI6MC45NSwiZ3JvdW5kIjowLjk1LCJpY2UiOjAuOTUsIm5vcm1hbCI6MC45NSwicG9pc29uIjowLjk1LCJwc3ljaGljIjowLjk1LCJyb2NrIjowLjk1LCJzdGVlbCI6MC45NSwid2F0ZXIiOjAuOTV9LCJ0YiI6MSwiaHYiOnsieCI6MS4wMzMsIm4iOlsiSW5mdXPDo28gZGUgRsO6cmlhIFQ1Il19fQ"}]}};
+const TB_PRESETS={"suicune":{"name":"Suicune","members":[{"name":"Wishiwashi (School)","moves":["Dive","Double-Edge","Feint Attack","Aqua Ring"],"ability":"u-wishiwashi-school-base"},{"name":"Blissey","moves":["Last Resort","Helping Hand","Heal Pulse","Soft-Boiled"],"ability":"g-normal"},{"name":"Lapras","moves":["Perish Song","Rain Dance","Body Slam","Life Dew"],"ability":"u-lapras-base"},{"name":"Milotic","moves":["Aqua Tail","Life Dew","Dragon Tail","Aqua Ring"],"ability":"u-milotic-base"},{"name":"Dewgong","moves":["Dive","Aqua Ring","Encore","Headbutt"],"ability":"g-water"},{"name":"Vaporeon","moves":["Aqua Ring","Double-Edge","Last Resort","Helping Hand"],"ability":"u-vaporeon-base"}]},"entei":{"name":"Entei","members":[{"name":"Tyranitar","moves":["Crunch","Earthquake","Dark Pulse","Iron Defense"],"ability":"u-tyranitar-base"},{"name":"Gyarados","moves":["Waterfall","Crunch","Dragon Dance","Aqua Tail"],"ability":"u-gyarados-base"},{"name":"Rhyperior","moves":["Earthquake","Drill Run","Rock Wrecker","Megahorn"],"ability":"u-rhyperior-base"},{"name":"Golem","moves":["Earthquake","Rock Blast","Stone Edge","Double-Edge"],"ability":"g-rock"},{"name":"Milotic","moves":["Aqua Tail","Life Dew","Dragon Tail","Aqua Ring"],"ability":"u-milotic-base"},{"name":"Vaporeon","moves":["Aqua Ring","Double-Edge","Last Resort","Helping Hand"],"ability":"u-vaporeon-base"}]},"jirachi":{"name":"Jirachi","members":[{"name":"Wishiwashi (School)","moves":["Beat Up","Feint Attack","Helping Hand","Aqua Ring"],"ability":"u-wishiwashi-school-base"},{"name":"Tyranitar","moves":["Crunch","Earthquake","Dark Pulse","Iron Defense"],"ability":"u-tyranitar-base"},{"name":"Houndoom","moves":["Flamethrower","Foul Play","Inferno","Crunch"],"ability":"u-houndoom-base"},{"name":"Hisuian Typhlosion","moves":["Flamethrower","Inferno","Eruption","Overheat"],"ability":"u-hisuian-typhlosion-base"},{"name":"Gardevoir","moves":["Mystical Fire","Heal Pulse","Wish","Dream Eater"],"ability":"u-gardevoir-base"},{"name":"Vaporeon","moves":["Aqua Ring","Helping Hand","Last Resort","Double-Edge"],"ability":"u-vaporeon-base"}]},"zeraora":{"name":"Zeraora","members":[{"name":"Rhyperior","moves":["Earthquake","Drill Run","Rock Wrecker","Megahorn"],"ability":"u-rhyperior-base"},{"name":"Golem","moves":["Earthquake","Rock Blast","Stone Edge","Double-Edge"],"ability":"g-rock"},{"name":"Tyranitar","moves":["Crunch","Earthquake","Dark Pulse","Iron Defense"],"ability":"u-tyranitar-base"},{"name":"Gardevoir","moves":["Mystical Fire","Heal Pulse","Wish","Dream Eater"],"ability":"u-gardevoir-base"},{"name":"Blissey","moves":["Last Resort","Helping Hand","Heal Pulse","Soft-Boiled"],"ability":"g-normal"},{"name":"Noivern","moves":["Roost","Moonlight","Tailwind","Boomburst"],"ability":"g-flying"}]}};
 function resolveBossTeam(preset, owned, info) {
   const used = new Set(), time = [], golpes = {}, habs = {}, warnings = [];
   for (const member of preset.members) {
-    const choices = owned.filter(p => p.n === member.name && !used.has(p.id))
+    const choices = owned.filter(p => p.n === member.name && (!member.id || p.id === member.id) && !used.has(p.id))
       .sort((a,b) => Number(info.poder?.[b.id]?.pw || b.pw || 0) - Number(info.poder?.[a.id]?.pw || a.pw || 0));
     const chosen = choices[0];
     if (!chosen) throw Error('Falta nesta conta: ' + member.name + '. Nenhuma alteração feita.');
+    if (member.id && (chosen.pkJ !== member.referencePacket || chosen.nv !== member.level || chosen.k !== member.tier || !!chosen.sh !== !!member.shiny)) throw Error('Os atributos de '+member.name+' mudaram. Simule novamente antes de aplicar.');
     used.add(chosen.id); time.push(chosen.id); golpes[chosen.id] = [...member.moves]; habs[chosen.id] = member.ability;
     if (chosen.pkJ !== member.referencePacket) warnings.push(member.name);
   }
@@ -252,49 +254,273 @@ async function applyBossTeam({preset,request,guard,saveBackup}) {
   }
 }
 
-  const TB_KEY='pokemoon-team-boss-v1:';
+
+function tbPlanTeams(input, roster, data, types) {
+  const norm = s => String(s || '').toLowerCase();
+  const byName = new Map(roster.map(p => [norm(p.nome), p]));
+  const moveIndex = new Map(data.gn.map((n,i) => [norm(n),i]));
+  const decode = s => {try{return JSON.parse(atob(s.replace(/-/g,'+').replace(/_/g,'/')));}catch(_){return {};}};
+  const damage = (attack, defenders) => defenders.reduce((v,t) => v * (types[attack]?.i?.includes(t) ? 0 : types[attack]?.f?.includes(t) ? 2 : types[attack]?.r?.includes(t) ? .5 : 1),1);
+  const enemy = [...new Set((input.boss.fases || []).flatMap(p => [p.tipo1,p.tipo2]).filter(t => t && t !== 'none'))];
+  if(input.choice && types[input.choice]) {enemy.length=0;enemy.push(input.choice);}
+  const enemies = enemy.length ? enemy : [input.boss.arena?.tipo || 'normal'];
+  const pool = input.owned.pokes.filter(p => byName.has(norm(p.n)) && p.pkJ && !/[~,;|]/.test(p.n)).map(p => {
+    const r=byName.get(norm(p.n)), packet=decode(p.pkJ), clamp=x=>Math.max(.1,Math.min(8,+x||1));
+    const a=(+r.s.atk||1)*clamp(packet.a),s=(+r.s.spa||1)*clamp(packet.s);
+    const effective = t => enemies.reduce((v,e)=>v+damage(t,[e]),0)/enemies.length;
+    const incoming = enemies.reduce((v,e)=>v+damage(e,r.tipos),0)/enemies.length;
+    const legal = new Set((data.mp[p.n] || []).filter(x=>p.nv>=200 || x[1]<=p.nv).map(x=>data.gn[x[0]]));
+    // Equipped moves are already learned. Never assume a learnable TM has been taught.
+    for(const n of input.owned.golpes?.[p.id] || []) legal.add(n);
+    const choices=[...legal].map(n=>{
+      const i=moveIndex.get(norm(n)),g=i===undefined?null:data.g[i];
+      if(!g)return {n,score:15,role:'other'};
+      const [type,family,category,power]=g,stat=category==='p'?a:s;
+      const support=/curaAliado|buffAliado|escudoAliado/.test(family);
+      const heal=/cura/.test(family),buff=/buff|escudo|contra/.test(family);
+      const score=power>0?power*stat/100*effective(type)*(r.tipos.includes(type)?1.15:1):support?105:heal?85:buff?60:12;
+      return {n,score,role:power>0?'attack':support?'support':heal?'heal':buff?'buff':'other'};
+    }).sort((a,b)=>b.score-a.score || a.n.localeCompare(b.n));
+    const take = mode => {
+      const selected=[],add=g=>{if(g&&!selected.includes(g.n))selected.push(g.n);};
+      add(choices.find(g=>g.role==='attack'));
+      if(mode==='support') {add(choices.find(g=>g.role==='support'));add(choices.find(g=>g.role==='heal'));}
+      else {add(choices.find(g=>g.role==='heal'));add(choices.find(g=>g.role==='buff'));}
+      for(const g of choices) {if(selected.length===4)break;add(g);}
+      return selected;
+    };
+    const attack=choices.find(g=>g.role==='attack')?.score||1;
+    const bulk=Math.sqrt((+r.s.hp||1)*clamp(packet.h)*Math.sqrt((+r.s.def||1)*clamp(packet.d)*(+r.s.spd||1)*clamp(packet.e)))/Math.max(.2,incoming);
+    return {id:p.id,name:p.n,moves:take('balanced'),supportMoves:take('support'),ability:input.info.habVale?.[p.id]||data.e[p.n]?.[0],packet:p.pkJ,level:p.nv,tier:p.k,shiny:p.sh,attack,bulk,healer:choices.some(g=>g.role==='support'),legal};
+  }).filter(p=>p.moves.length===4 && p.ability);
+  if(pool.length<6)throw Error('São necessários seis Pokémon disponíveis com quatro golpes válidos.');
+  const used=new Set(),teams=[];
+  const add=(list,label)=>{
+    if(list.length!==6 || list.some(p=>p.moves.length!==4) || new Set(list.map(p=>p.id)).size!==6)return;
+    const team=list.map(p=>({id:p.id,name:p.name,moves:[...p.moves],ability:p.ability,referencePacket:p.packet,level:p.level,tier:p.tier,shiny:p.shiny}));
+    const key=JSON.stringify(team.map(p=>[p.id,p.moves]));if(used.has(key))return;used.add(key);teams.push({label,members:team});
+  };
+  const pick=(rank,names=new Set())=>rank.filter(p=>{if(names.has(p.name))return false;names.add(p.name);return true;});
+  const ranked = ratio => pick([...pool].sort((a,b)=>(b.attack**ratio*b.bulk**(1-ratio))-(a.attack**ratio*a.bulk**(1-ratio))));
+  for(const ratio of [.65,.35,.9]) {
+    const rank=ranked(ratio);add(rank.slice(0,6),'Equilíbrio '+Math.round(ratio*100));
+    const healers=pick([...pool].filter(p=>p.healer).sort((a,b)=>b.bulk-a.bulk)).slice(0,2);
+    const supports=healers.map(p=>({...p,moves:p.supportMoves}));
+    add([...rank.filter(p=>!healers.some(h=>h.name===p.name)).slice(0,6-supports.length),...supports],'Suporte '+Math.round(ratio*100));
+  }
+  const current=(input.info.time||[]).map(id=>pool.find(p=>p.id===id));
+  if(current.every(Boolean)&&current.length===6)add(current.map(p=>({...p,moves:(input.info.golpes?.[p.id]||p.moves).filter(n=>p.legal.has(n))})),'Time atual');
+  const preset=Object.values(input.presets).find(p=>norm(p.name)===norm(input.boss.nome));
+  if(preset){const selected=[],ids=new Set();for(const m of preset.members){const p=[...pool].filter(p=>p.name===m.name&&!ids.has(p.id)).sort((a,b)=>b.attack*b.bulk-a.attack*a.bulk)[0];if(!p||m.moves.some(n=>!p.legal.has(n)))break;ids.add(p.id);selected.push({...p,moves:m.moves,ability:p.ability});}add(selected,'Composição salva');}
+  // Fixed bound keeps the search responsive; the final winner gets its own 50 trials.
+  return teams.slice(0,8);
+}
+
+
+// Sources execute only inside a sandbox without same-origin access or network permissions.
+function tbEngineBootstrap(config) {
+  window.__tbSearch=config.search;
+  window.SIM_SEM_TELA=true;
+  window.requestAnimationFrame=()=>0;
+  window.__tbDiscardMessage=()=>{};
+  window.__tbErrors=[];
+  addEventListener('error',e=>__tbErrors.push(String(e.message)));
+  addEventListener('unhandledrejection',e=>__tbErrors.push(String(e.reason?.message||e.reason)));
+  window.fetch=async (url,options={})=>{
+    if(options.method && options.method!=='GET')throw Error('Simulação bloqueou uma escrita.');
+    const u=new URL(String(url),'https://offline.invalid/arena-proto/');
+    if(u.origin!=='https://offline.invalid')throw Error('Simulação sem acesso à rede.');
+    if(Object.hasOwn(config.assets,u.pathname))return new Response(config.assets[u.pathname],{status:200});
+    if(u.pathname.endsWith('/manifesto.json') || u.pathname==='/sprites/manifest.json')return new Response('{}');
+    throw Error('Arquivo não disponível no simulador: '+u.pathname);
+  };
+}
+async function tbEngineRun(input, send) {
+  // Hidden-frame timers are throttled by Chromium. MessageChannel yields to the
+  // event loop without turning every batch into a one-second background wait.
+  const queue=[],scheduler=new MessageChannel();scheduler.port1.onmessage=()=>queue.shift()?.();
+  const yieldUI=()=>new Promise(r=>{queue.push(r);scheduler.port2.postMessage(0);});
+  img=async()=>null;imgLutador=async()=>null;
+  const roster=await(await fetch('roster.json')).json();ROSTER=roster.pokes;TIPOS=roster.tipos;
+  await BX.carregaLuta(BOSS_ID);
+  if(!BX.lutas[BOSS_ID])throw Error('O módulo não registrou este boss.');
+  const slots=members=>members.map(p=>(p.shiny?'*':'')+p.name+'~'+p.moves.join(';')+'~'+p.ability+'~'+p.level+'~'+p.tier+'~'+p.referencePacket);
+  const trial=async (members,seed)=>{
+    __tbErrors.length=0;
+    window.__tbSearch='?'+new URLSearchParams({boss:input.boss.id,semtela:'1',servidor:'1',nv:String(input.boss.nivelRecomendado||200),seed:String(seed),escolha:input.choice||'',times:slots(members).join(',')});
+    BX.escolha=input.choice||null;ARENA_SEED=seed;
+    const fatias=[seed];let v=seed;for(let i=1;i<650;i++){v=(v+1831565813)>>>0;let t=v;t=Math.imul(t^t>>>15,1|t);t^=t+Math.imul(t^t>>>7,61|t);fatias.push((t^t>>>14)>>>0);}SIM.fatias=i=>fatias[i];
+    await BX.novaLuta();
+    if(times[0]?.length!==6)throw Error('O motor não montou os seis Pokémon.');
+    for(let i=0;i<6;i++)if(times[0][i].nome!==members[i].name)throw Error('O motor alterou a composição.');
+    while(!fim && simT<600000){for(let i=0;i<240&&!fim&&simT<600000;i++){const prev=SIM.ticks;passoLogica();if(SIM.ticks===prev)throw Error('Motor de batalha parou.');}await yieldUI();}
+    const out=BX.resultado(),errors=[...__tbErrors,...SIM.erros];
+    if(errors.length)throw Error('Motor: '+errors[0]);
+    return {win:out.vitoria===true,finished:!!out.terminou,seconds:+out.seg||simT/1000,damage:+out.danoTotal||0};
+  };
+  const candidates=tbPlanTeams(input,ROSTER,V4_DADOS,TIPOS);
+  if(input.testOnly){const result=await trial(candidates[0].members,67891);send('ready',{boss:BOSS_ID,result});return;}
+  let best=null;const seed0=crypto.getRandomValues(new Uint32Array(1))[0]||12345;
+  for(let c=0;c<candidates.length;c++){
+    let wins=0,damage=0,seconds=0;
+    for(let i=0;i<3;i++){send('progress',{text:'Triagem de times: '+(c*3+i)+'/'+(candidates.length*3)});const r=await trial(candidates[c].members,(seed0+i*104729)>>>0||1);wins+=r.win?1:0;damage+=r.damage;seconds+=r.seconds;}
+    const score={wins,damage,seconds,team:candidates[c]};
+    if(!best || wins>best.wins || wins===best.wins&&(wins?seconds<best.seconds:damage>best.damage))best=score;
+  }
+  if(!best)throw Error('Não foi possível formar uma composição.');
+  let wins=0,timeouts=0,totalSeconds=0;const seeds=[];
+  for(let i=0;i<50;i++){
+    send('progress',{text:'Validação do time escolhido: '+i+'/50',completed:i,wins});
+    // Validation seeds are separate from screening, fixed for this run and recorded.
+    const seed=(seed0+(i+100)*104729)>>>0||1;seeds.push(seed);
+    const r=await trial(best.team.members,seed);wins+=r.win?1:0;timeouts+=r.finished?0:1;totalSeconds+=r.seconds;
+  }
+  send('done',{members:best.team.members,label:best.team.label,wins,losses:50-wins,timeouts,total:50,meanSeconds:totalSeconds/50,seeds,choice:input.choice||'',bossId:input.boss.id,at:Date.now()});
+}
+function tbSimulationHTML(html, assets, bossId, choice, input, channel) {
+  const json=x=>JSON.stringify(x).replace(/</g,'\\u003c');
+  const tag=s=>'<script>'+s.replace(/<\/script/gi,'<\\/script')+'</script>';
+  const sources=[...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*>/g)].map(m=>new URL(m[1],'https://offline.invalid/arena-proto/arena.html')).filter(u=>u.origin==='https://offline.invalid'&&!/arena-replay\.js$/.test(u.pathname));
+  let body=html.slice(html.indexOf('<body>')+6,html.indexOf('<script'));
+  const search='?'+new URLSearchParams({boss:bossId,escolha:choice||'',semtela:'1',servidor:'1',seed:'1'});
+  let content=tag('('+tbEngineBootstrap.toString()+')('+json({search,assets})+');');
+  for(const u of sources){
+    let source=assets[u.pathname];if(typeof source!=='string')throw Error('Falta arquivo '+u.pathname);
+    if(u.pathname.endsWith('/arena-main.js')){const marker=',(async()=>{const e=await(await fetch("roster.json"))',i=source.indexOf(marker);if(i<0)throw Error('O motor mudou; atualização necessária antes de simular.');source=source.slice(0,i)+';';}
+    source=source.replace(/(?:window\.|self\.)?location\.search/g,'window.__tbSearch').replace(/(?:window\.)?parent\.postMessage/g,'window.__tbDiscardMessage');
+    // No network bridge to the game, replays, or real fight submission is installed.
+    if(/\/(?:arena-servidor|arena-resultado)\.js$/.test(u.pathname))continue;
+    content+=tag(source);
+  }
+  // Boss modules read the choice at registration, so each run gets a fresh realm.
+  const modulePath='/arena-proto/arena-boss-'+bossId+'.js';
+  const virtualAssets={...assets,[modulePath]:assets[modulePath].replace(/(?:window\.|self\.)?location\.search/g,'window.__tbSearch').replace(/(?:window\.)?parent\.postMessage/g,'window.__tbDiscardMessage')};
+  content+=tag('('+tbEngineBootstrap.toString()+')('+json({search,assets:virtualAssets})+');\n'+tbPlanTeams.toString()+'\nconst __tbSend=(type,data)=>parent.postMessage({channel:'+json(channel)+',type,data},"*");('+tbEngineRun.toString()+')('+json(input)+',__tbSend).catch(e=>__tbSend("error",{message:e.message}));');
+  return '<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\' \'unsafe-eval\'; style-src \'unsafe-inline\'; img-src data:; connect-src \'none\'; form-action \'none\'; base-uri \'none\'"><body>'+body+content+'</body>';
+}
+
+
+  const TB_KEY='pokemoon-team-boss-v2:';
   const tbToken=()=>{try{return typeof q==='string'&&q?q:localStorage.getItem('pmi_token');}catch(_){return null;}};
   const tbOwner=()=>{try{return String(K?.player?.id||K?.player?.name||'');}catch(_){return '';}};
-  let tbBusy=false,tbBound='';
-  function tbRead(owner){try{return JSON.parse(localStorage.getItem(TB_KEY+owner)||'{}');}catch(_){return {};}}
-  function tbWrite(owner,data){localStorage.setItem(TB_KEY+owner,JSON.stringify({...tbRead(owner),...data}));}
-  function tbRequester(token){
-    return async function(route,data){
-      if(!['/api/gm/pokes','/api/boss/equipe'].includes(route))throw Error('Endpoint não permitido.');
-      if(data&&(route!=='/api/boss/equipe'||Object.keys(data).some(k=>!['time','golpes','habs'].includes(k))))throw Error('Operação não permitida.');
-      const url=new URL(route,location.origin);if(!data)url.searchParams.set('token',token);
-      const options=data?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,...data})}:{method:'GET',cache:'no-store'};
-      let response=await fetch(url,{...options,signal:AbortSignal.timeout(20000)});
-      if(response.status===421){const owner=response.headers.get('X-Pokeidle-Dono');if(/^\d+$/.test(owner||''))response=await fetch(url,{...options,headers:{...options.headers,'X-Pokeidle-P':owner},signal:AbortSignal.timeout(20000)});}
-      const result=await response.json();if(!response.ok||result.err||result.error)throw Error(String(result.err||result.error||('HTTP '+response.status)));
-      return result;
+  const tbRead=owner=>{try{return JSON.parse(localStorage.getItem(TB_KEY+owner)||'{}');}catch(_){return {};}};
+  const tbWrite=(owner,data)=>{try{localStorage.setItem(TB_KEY+owner,JSON.stringify({...tbRead(owner),...data}));}catch(_){}};
+  let tbBound='',tbBusy=false,tbRun=null,tbResult=null,tbBosses=[],tbCatalogOwner='',tbApplying=false;
+  const tbAssetCache=new Map();
+  async function tbFetch(token,route,data,signal){
+    const url=new URL(route,location.origin);if(url.origin!==location.origin)throw Error('Origem inválida.');
+    if(!data)url.searchParams.set('token',token);
+    const options=data?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,...data})}:{method:'GET',cache:'no-store'};
+    const timeout=AbortSignal.timeout(25000),combined=signal?AbortSignal.any([signal,timeout]):timeout;
+    let response=await fetch(url,{...options,signal:combined});
+    if(response.status===421){const owner=response.headers.get('X-Pokeidle-Dono');if(/^\d+$/.test(owner||''))response=await fetch(url,{...options,headers:{...options.headers,'X-Pokeidle-P':owner},signal:combined});}
+    if(!response.ok)throw Error('HTTP '+response.status+' ao carregar '+url.pathname);
+    return response;
+  }
+  function tbRequester(token,signal){return async(route,data)=>{
+    if(!['/api/gm/pokes','/api/boss/equipe','/api/boss/list?modo=individual'].includes(route))throw Error('Endpoint não permitido.');
+    if(data&&(route!=='/api/boss/equipe'||Object.keys(data).some(k=>!['time','golpes','habs'].includes(k))))throw Error('Operação não permitida.');
+    const result=await(await tbFetch(token,route,data,signal)).json();
+    if(result.err||result.error)throw Error(String(result.err||result.error));return result;
+  };}
+  async function tbAssets(token,bossId,signal,progress){
+    const get=async pathname=>{
+      if(!/^\/arena-proto\/[a-zA-Z0-9_./-]+\.(?:js|json|html)$/.test(pathname)&&pathname!=='/golpe-nomes.js')throw Error('Arquivo do motor não permitido.');
+      if(pathname.split('/').includes('..'))throw Error('Caminho inválido.');
+      if(tbAssetCache.has(pathname))return tbAssetCache.get(pathname);
+      const text=await(await tbFetch(token,pathname,null,signal)).text();
+      if(/<html|<!doctype/i.test(text)&&!pathname.endsWith('.html'))throw Error('O jogo não retornou o arquivo do motor. Tente novamente.');
+      tbAssetCache.set(pathname,text);return text;
     };
+    const html=await get('/arena-proto/arena.html');
+    const paths=[...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*>/g)].map(m=>new URL(m[1],location.origin+'/arena-proto/arena.html')).filter(u=>u.origin===location.origin&&!/arena-replay\.js$/.test(u.pathname)).map(u=>u.pathname);
+    paths.push('/arena-proto/roster.json','/arena-proto/arena-boss-'+bossId+'.js');
+    const unique=[...new Set(paths)],assets={};let index=0,done=0;
+    await Promise.all(Array.from({length:Math.min(6,unique.length)},async()=>{while(index<unique.length){const p=unique[index++];assets[p]=await get(p);progress('Carregando motor: '+(++done)+'/'+unique.length);}}));
+    return {html,assets};
   }
   moonPanelTheme();
   const tbPanel=document.createElement('section');tbPanel.id='pokemoon-team-boss';tbPanel.className='moon-panel';
-  tbPanel.innerHTML='<div class="moon-head"><span>🏆</span><span class="moon-title">Time Boss</span><button data-close title="Fechar">×</button></div><div class="moon-body"><div class="moon-state">Boss individual · aplicação manual</div><p class="moon-note">Escolher um boss monta o time, os quatro golpes e as habilidades. Usa os exemplares mais fortes desta conta.</p><select data-select style="width:100%;padding:8px;background:#101c2a;color:#f4e4b8;border:1px solid #816e43;border-radius:6px"><option value="">Escolha um boss…</option></select><div class="moon-detail" data-team></div><button class="moon-go" data-apply>Aplicar novamente</button><div class="moon-detail" data-status>Escolha um boss para montar o time.</div><p class="moon-foot">Não inicia lutas, não usa chaves e não altera times da hunt, Ginásio ou guilda. Recarregar o jogo não aplica o time novamente.</p></div>';
-  document.body.appendChild(tbPanel);
+  tbPanel.innerHTML='<div class="moon-head"><span>🏆</span><span class="moon-title">Time Boss</span><button data-close title="Fechar">×</button></div><div class="moon-body"><div class="moon-state">Boss individual · simulação local</div><p class="moon-note">Busca composições com os Pokémon desta conta e valida o time escolhido em 50 lutas.</p><select data-select aria-label="Boss individual"><option value="">Carregando bosses…</option></select><select data-choice aria-label="Variação do boss" hidden></select><button class="moon-go" data-simulate>Simular 50 lutas</button><button data-cancel hidden>Cancelar simulação</button><div class="moon-detail" data-status>Abra o Time Boss para carregar o catálogo.</div><button class="moon-go" data-apply disabled>Aplicar time simulado</button><div class="moon-detail" data-team hidden></div><p class="moon-foot">Sem lutas reais ou gasto de chaves. A taxa é uma estimativa local, não garantia. Não ensina TMs. O time só muda ao clicar em Aplicar.</p></div>';
+  const tbStyle=document.createElement('style');tbStyle.textContent='#pokemoon-team-boss{width:min(370px,calc(100vw - 16px));max-height:calc(100vh - 16px)}#pokemoon-team-boss .moon-body{overflow:auto;max-height:calc(100vh - 75px)}#pokemoon-team-boss select{width:100%;padding:8px;margin:4px 0;background:#101c2a;color:#f4e4b8;border:1px solid #816e43;border-radius:6px}#pokemoon-team-boss [data-team]{max-height:220px;overflow:auto;white-space:pre-wrap}#pokemoon-team-boss button{cursor:pointer}#pokemoon-team-boss button:disabled{opacity:.5;cursor:default}';document.head.appendChild(tbStyle);document.body.appendChild(tbPanel);
   const tbEl=k=>tbPanel.querySelector('[data-'+k+']');
-  for(const [key,preset] of Object.entries(TB_PRESETS)){const opt=document.createElement('option');opt.value=key;opt.textContent='Team '+preset.name;tbEl('select').appendChild(opt);}
-  const tbIcon=document.createElement('canvas');tbIcon.width=32;tbIcon.height=32;const tbCtx=tbIcon.getContext('2d');tbCtx.fillStyle='#d7ad47';tbCtx.fillRect(8,5,16,13);tbCtx.fillRect(4,7,4,8);tbCtx.fillRect(24,7,4,8);tbCtx.fillRect(13,18,6,6);tbCtx.fillRect(8,25,16,4);tbCtx.fillStyle='#fff0a8';tbCtx.fillRect(10,7,4,8);
-  tbPanel.hidden=true;addMoonDockButton('time-boss','Time Boss',tbIcon,tbPanel);moonDock().drag(tbPanel,tbPanel.querySelector('.moon-head'),{storageKey:TB_KEY+'position'});
+  const tbIcon=document.createElement('canvas');tbIcon.width=32;tbIcon.height=32;const tbCtx=tbIcon.getContext('2d');tbCtx.fillStyle='#d7ad47';for(const r of [[8,5,16,13],[4,7,4,8],[24,7,4,8],[13,18,6,6],[8,25,16,4]])tbCtx.fillRect(...r);tbCtx.fillStyle='#fff0a8';tbCtx.fillRect(10,7,4,8);
+  tbPanel.hidden=true;addMoonDockButton('time-boss','Time Boss',tbIcon,tbPanel);moonDock().drag(tbPanel,tbPanel.querySelector('.moon-head'),{storageKey:'pokemoon-team-boss-v1:position'});
   tbEl('close').onclick=()=>{tbPanel.hidden=true;moonDock().sync();};
-  function tbPreview(){const preset=TB_PRESETS[tbEl('select').value];tbEl('team').textContent=preset?preset.members.map((p,i)=>(i+1)+'. '+p.name+'\n'+p.moves.join(' · ')).join('\n\n')+'\n\n'+preset.evidence:'';tbEl('apply').disabled=tbBusy||!preset||!tbOwner();}
-  function tbBind(){const owner=tbOwner();if(tbBusy||owner===tbBound)return;tbBound=owner;const saved=tbRead(owner);tbEl('select').value=TB_PRESETS[saved.selected]?saved.selected:'';tbEl('status').textContent=owner?(saved.status||'Escolha um boss para montar o time.'):'Aguardando personagem conectado.';tbPreview();}
-  async function tbApply(){
-    if(tbBusy)return;
-    const owner=tbOwner(),token=tbToken(),key=tbEl('select').value,preset=TB_PRESETS[key];
-    if(!owner||!token||!preset)return;
-    tbBusy=true;tbEl('select').disabled=true;tbPreview();tbEl('status').textContent='Conferindo os Pokémon e salvando o time…';
-    const guard=()=>{if(tbOwner()!==owner||tbToken()!==token)throw Error('Personagem ou sessão mudou durante a aplicação.');};
-    try{
-      const plan=await applyBossTeam({preset,request:tbRequester(token),guard,saveBackup:backup=>tbWrite(owner,{backup:{at:Date.now(),...backup}})});
-      const status='Team '+preset.name+' confirmado no servidor.'+(plan.warnings.length?' Atributos diferentes da simulação em '+plan.warnings.join(', ')+'. A taxa de vitória pode mudar.':'')+(key==='jirachi'?' Para Jirachi, use o desejo Vida.':'');
-      tbWrite(owner,{selected:key,status});if(tbOwner()===owner)tbEl('status').textContent=status;
-    }catch(error){if(tbOwner()===owner)tbEl('status').textContent=error.message;}
-    finally{tbBusy=false;tbEl('select').disabled=false;if(tbOwner()!==owner){tbBound='';tbBind();}tbPreview();}
+  const tbSelected=()=>tbBosses.find(b=>b.id===tbEl('select').value);
+  function tbButtons(){tbEl('select').disabled=tbBusy;tbEl('choice').disabled=tbBusy;tbEl('simulate').disabled=tbBusy||!tbSelected()||!tbOwner();tbEl('cancel').hidden=!tbRun;tbEl('apply').disabled=tbBusy||!tbResult||tbResult.total!==50||tbResult.bossId!==tbEl('select').value||tbResult.choice!==(tbEl('choice').value||'');}
+  function tbPreview(){
+    const r=tbResult;tbEl('team').hidden=!r;
+    tbEl('team').textContent=r?r.wins+'/50 vitórias ('+(r.wins*2)+'%) · '+r.losses+' derrotas'+(r.timeouts?' · '+r.timeouts+' sem conclusão em 10 min':'')+'\nTempo médio: '+Math.round(r.meanSeconds)+' s\n'+(r.choice?'Variação: '+r.choice+'\n':'')+'\n'+r.members.map((p,i)=>(i+1)+'. '+p.name+'\n'+p.moves.join(' · ')).join('\n\n'):'';
+    tbButtons();if(!tbPanel.hidden)moonDock().clamp(tbPanel);
   }
-  tbEl('select').onchange=()=>{tbPreview();void tbApply();};tbEl('apply').onclick=tbApply;
-  tbBind();setInterval(tbBind,5000);window.__idleMoonTeamBoss={version:'0.1.0'};
+  function tbChoices(){
+    const b=tbSelected(),c=b?.escolhaArena;tbEl('choice').replaceChildren();
+    if(c){
+      if(c.lista){const o=document.createElement('option');o.value='';o.textContent='Ordem padrão do boss';tbEl('choice').append(o);}
+      else {if(c.opcional){const o=document.createElement('option');o.value='';o.textContent='Padrão / sem escolha';tbEl('choice').append(o);}for(const item of c.opcoes||[]){const o=document.createElement('option');o.value=item.id;o.textContent=item.rotulo;tbEl('choice').append(o);}if(b.id==='estelar-jirachi')tbEl('choice').value='vida';}
+    }
+    tbEl('choice').hidden=!c;tbResult=null;tbPreview();
+  }
+  async function tbLoad(){
+    const owner=tbOwner(),token=tbToken();if(!owner||!token||tbBusy||tbCatalogOwner===owner)return;
+    tbBusy=true;tbButtons();tbEl('status').textContent='Lendo bosses individuais…';
+    try{const data=await tbRequester(token)('/api/boss/list?modo=individual');if(owner!==tbOwner()||token!==tbToken())return;
+      tbBosses=(data.bosses||[]).filter(b=>b.modo!=='guilda'&&/^[a-z0-9-]{2,40}$/.test(b.id));tbCatalogOwner=owner;tbEl('select').replaceChildren();
+      const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Escolha um boss ('+tbBosses.length+')…';tbEl('select').append(placeholder);
+      for(const b of [...tbBosses].sort((a,b)=>a.nome.localeCompare(b.nome))){const o=document.createElement('option');o.value=b.id;o.textContent=b.nome+' · Nv '+b.nivelRecomendado+(b.travadoNivel?' · nível bloqueado':'');tbEl('select').append(o);}
+      const saved=tbRead(owner);tbEl('select').value=tbBosses.some(b=>b.id===saved.selected)?saved.selected:'';tbChoices();
+      if(saved.result?.total===50&&saved.result.bossId===tbEl('select').value){tbEl('choice').value=saved.result.choice||'';tbResult=saved.result;}
+      tbEl('status').textContent=tbResult?'Resultado salvo nesta conta. Simule novamente para atualizar os testes.':'Escolha o boss e clique em Simular. A triagem vem antes das 50 lutas de validação.';
+    }catch(e){if(owner===tbOwner())tbEl('status').textContent=e.message;}finally{tbBusy=false;tbPreview();}
+  }
+  function tbCancel(message='Simulação cancelada. Nenhum time alterado.'){
+    const run=tbRun;if(!run)return;tbRun=null;run.controller.abort();clearTimeout(run.timer);removeEventListener('message',run.listener);run.frame?.remove();tbBusy=false;tbResult=null;tbEl('status').textContent=message;tbPreview();
+  }
+  async function tbSimulate(){
+    if(tbBusy)return;const boss=tbSelected(),owner=tbOwner(),token=tbToken();if(!boss||!owner||!token)return;
+    const choice=tbEl('choice').value||'',run={controller:new AbortController(),owner,token};tbRun=run;tbBusy=true;tbResult=null;tbPreview();
+    const guard=()=>{if(tbRun!==run||owner!==tbOwner()||token!==tbToken())throw Error('Simulação cancelada ou conta alterada.');};
+    const progress=text=>{guard();tbEl('status').textContent=text;};
+    try{
+      progress('Lendo Pokémon e atributos atuais…');
+      const request=tbRequester(token,run.controller.signal),[owned,info]=await Promise.all([request('/api/gm/pokes'),request('/api/boss/equipe')]);guard();
+      const pack=await tbAssets(token,boss.id,run.controller.signal,progress);guard();
+      const frame=document.createElement('iframe');run.frame=frame;frame.setAttribute('sandbox','allow-scripts');frame.hidden=true;frame.setAttribute('aria-hidden','true');
+      const channel=crypto.randomUUID();run.listener=e=>{
+        if(tbRun!==run||e.source!==frame.contentWindow||e.data?.channel!==channel)return;
+        try{guard();const {type,data}=e.data;
+          if(type==='progress'){progress(data.text);return;}
+          if(type==='error')throw Error(data.message);
+          if(type==='done'){
+            if(data.total!==50||data.bossId!==boss.id||data.choice!==choice||data.members?.length!==6||new Set(data.members.map(p=>p.id)).size!==6||!Number.isInteger(data.wins)||data.wins<0||data.wins>50)throw Error('Resultado de simulação inválido.');
+            tbResult=data;tbWrite(owner,{selected:boss.id,result:data});tbFinish(run);tbEl('status').textContent='Validação concluída: '+data.wins+'/50 vitórias. '+(data.wins?'Revise o time abaixo antes de aplicar.':'O time não venceu nesta amostra. Considere melhorar seus Pokémon.');tbPreview();
+          }
+        }catch(e){tbCancel(e.message);}
+      };addEventListener('message',run.listener);
+      run.timer=setTimeout(()=>tbCancel('A simulação excedeu 5 minutos. Tente novamente.'),300000);
+      frame.srcdoc=tbSimulationHTML(pack.html,pack.assets,boss.id,choice,{boss,choice,owned,info,presets:TB_PRESETS},channel);document.body.append(frame);progress('Iniciando triagem local…');
+    }catch(e){if(tbRun===run)tbCancel(e.message);}
+  }
+  function tbFinish(run){clearTimeout(run.timer);removeEventListener('message',run.listener);run.frame?.remove();run.controller.abort();if(tbRun===run)tbRun=null;tbBusy=false;}
+  async function tbApply(){
+    if(tbBusy||!tbResult)return;const owner=tbOwner(),token=tbToken(),r=tbResult,boss=tbSelected();if(!owner||!token||r.bossId!==boss?.id||r.choice!==(tbEl('choice').value||''))return;
+    tbBusy=true;tbApplying=true;tbButtons();tbEl('status').textContent='Conferindo os exemplares simulados e salvando o time…';
+    const guard=()=>{if(owner!==tbOwner()||token!==tbToken())throw Error('Personagem ou sessão mudou durante a aplicação.');};
+    try{await applyBossTeam({preset:{members:r.members},request:tbRequester(token),guard,saveBackup:backup=>tbWrite(owner,{backup:{at:Date.now(),...backup}})});if(owner===tbOwner())tbEl('status').textContent='Time confirmado no boss individual.'+(r.choice?' Ao entrar na luta, escolha a variação '+r.choice+'.':'');}
+    catch(e){if(owner===tbOwner())tbEl('status').textContent=e.message;}
+    finally{tbBusy=false;tbApplying=false;tbBind();tbPreview();}
+  }
+  function tbBind(){
+    const owner=tbOwner();if(tbRun&&(tbRun.owner!==owner||tbRun.token!==tbToken()))tbCancel('Conta alterada. Simulação cancelada.');
+    if(tbApplying)return;
+    if(tbBound!==owner){tbBound=owner;tbResult=null;tbBosses=[];tbCatalogOwner='';tbEl('select').replaceChildren();tbEl('status').textContent=owner?'Abra o Time Boss para carregar o catálogo.':'Aguardando personagem conectado.';tbPreview();}
+    if(!tbPanel.hidden&&!tbBusy&&tbCatalogOwner!==owner)void tbLoad();
+  }
+  tbEl('select').onchange=()=>{tbChoices();tbWrite(tbOwner(),{selected:tbEl('select').value,result:null});tbEl('status').textContent='Clique em Simular para testar este boss.';};
+  tbEl('choice').onchange=()=>{tbResult=null;tbWrite(tbOwner(),{result:null});tbPreview();};
+  tbEl('simulate').onclick=tbSimulate;tbEl('cancel').onclick=()=>tbCancel();tbEl('apply').onclick=tbApply;
+  const tbObserver=new MutationObserver(()=>{tbBind();});tbObserver.observe(tbPanel,{attributes:true,attributeFilter:['hidden']});
+  tbBind();setInterval(tbBind,1000);window.__idleMoonTeamBoss={version:'0.2.0'};
 
 })();
