@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Time Boss
 // @namespace    local.pokemoon.team-boss
-// @version      0.2.1
+// @version      0.2.2
 // @description  Simula 50 lutas locais no processo isolado do Hub e aplica o time sob comando.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -255,6 +255,18 @@ async function applyBossTeam({preset,request,guard,saveBackup}) {
 }
 
 
+function tbCurrentBossTeam(input) {
+  const {owned,info}=input,ids=info.time||[];
+  if(info.modo&&info.modo!=='individual')throw Error('A equipe retornada não é do Boss individual.');
+  if(ids.length!==6||new Set(ids).size!==6)throw Error('Monte seis Pokémon diferentes no Boss individual antes de simular.');
+  return {label:'Time atual do Boss individual',members:ids.map(id=>{
+    const p=owned.pokes.find(p=>p.id===id),moves=info.golpes?.[id],ability=info.habVale?.[id]||info.habs?.[id];
+    if(!p||!p.pkJ)throw Error('Um Pokémon do Boss individual não está disponível nesta conta.');
+    if(!Array.isArray(moves)||moves.length!==4||new Set(moves).size!==4||moves.some(n=>typeof n!=='string'||!n||/[~;|,]/.test(n)))throw Error('Confira os quatro golpes no Boss individual para '+p.n+'.');
+    if(!ability)throw Error('Não foi possível ler a habilidade de '+p.n+' no Boss individual.');
+    return {id:p.id,name:p.n,moves:[...moves],ability,referencePacket:p.pkJ,level:p.nv,tier:p.k,shiny:p.sh};
+  })};
+}
 function tbPlanTeams(input, roster, data, types) {
   const norm = s => String(s || '').toLowerCase();
   const byName = new Map(roster.map(p => [norm(p.nome), p]));
@@ -354,15 +366,19 @@ async function tbEngineRun(input, send) {
     await BX.novaLuta();
     if(times[0]?.length!==6)throw Error('O motor não montou os seis Pokémon.');
     for(let i=0;i<6;i++)if(times[0][i].nome!==members[i].name)throw Error('O motor alterou a composição.');
+    if(input.mode==='current')for(let i=0;i<6;i++){
+      if(JSON.stringify(times[0][i].kit?.map(g=>g.n))!==JSON.stringify(members[i].moves)||times[0][i].hab!==members[i].ability)throw Error('O motor não reproduziu os golpes ou a habilidade de '+members[i].name+'. Confira a configuração no jogo.');
+    }
     let heartbeat=Date.now();while(!fim && simT<600000){for(let i=0;i<240&&!fim&&simT<600000;i++){const prev=SIM.ticks;passoLogica();if(SIM.ticks===prev)throw Error('Motor de batalha parou.');}if(Date.now()-heartbeat>=2000){send('progress',{text:phase+' · batalha em '+Math.floor(simT/1000)+' s'});heartbeat=Date.now();}await yieldUI();}
     const out=BX.resultado(),errors=[...__tbErrors,...SIM.erros];
     if(errors.length)throw Error('Motor: '+errors[0]);
     return {win:out.vitoria===true,finished:!!out.terminou,seconds:+out.seg||simT/1000,damage:+out.danoTotal||0};
   };
-  const candidates=tbPlanTeams(input,ROSTER,V4_DADOS,TIPOS);
+  const currentMode=input.mode==='current';
+  const candidates=currentMode?[tbCurrentBossTeam(input)]:tbPlanTeams(input,ROSTER,V4_DADOS,TIPOS);
   if(input.testOnly){const result=await trial(candidates[0].members,67891);send('ready',{boss:BOSS_ID,result});return;}
-  let best=null;const seed0=crypto.getRandomValues(new Uint32Array(1))[0]||12345;
-  for(let c=0;c<candidates.length;c++){
+  let best=currentMode?{team:candidates[0]}:null;const seed0=crypto.getRandomValues(new Uint32Array(1))[0]||12345;
+  for(let c=0;!currentMode&&c<candidates.length;c++){
     let wins=0,damage=0,seconds=0;
     for(let i=0;i<3;i++){progress({text:'Triagem de times: '+(c*3+i)+'/'+(candidates.length*3)});const r=await trial(candidates[c].members,(seed0+i*104729)>>>0||1);wins+=r.win?1:0;damage+=r.damage;seconds+=r.seconds;}
     const score={wins,damage,seconds,team:candidates[c]};
@@ -376,7 +392,7 @@ async function tbEngineRun(input, send) {
     const seed=(seed0+(i+100)*104729)>>>0||1;seeds.push(seed);
     const r=await trial(best.team.members,seed);wins+=r.win?1:0;timeouts+=r.finished?0:1;totalSeconds+=r.seconds;
   }
-  send('done',{members:best.team.members,label:best.team.label,wins,losses:50-wins,timeouts,total:50,meanSeconds:totalSeconds/50,seeds,choice:input.choice||'',bossId:input.boss.id,at:Date.now()});
+  send('done',{members:best.team.members,label:best.team.label,mode:currentMode?'current':'auto',screeningTrials:currentMode?0:candidates.length*3,wins,losses:50-wins,timeouts,total:50,meanSeconds:totalSeconds/50,seeds,choice:input.choice||'',bossId:input.boss.id,at:Date.now()});
 }
 function tbSimulationHTML(html, assets, bossId, choice, input, channel) {
   const json=x=>JSON.stringify(x).replace(/</g,'\\u003c');
@@ -396,7 +412,7 @@ function tbSimulationHTML(html, assets, bossId, choice, input, channel) {
   // Boss modules read the choice at registration, so each run gets a fresh realm.
   const modulePath='/arena-proto/arena-boss-'+bossId+'.js';
   const virtualAssets={...assets,[modulePath]:assets[modulePath].replace(/(?:window\.|self\.)?location\.search/g,'window.__tbSearch').replace(/(?:window\.)?parent\.postMessage/g,'window.__tbDiscardMessage')};
-  content+=tag('('+tbEngineBootstrap.toString()+')('+json({search,assets:virtualAssets})+');\n'+tbPlanTeams.toString()+'\nconst __tbSend=(type,data)=>parent.postMessage({channel:'+json(channel)+',type,data},"*");('+tbEngineRun.toString()+')('+json(input)+',__tbSend).catch(e=>__tbSend("error",{message:e.message}));');
+  content+=tag('('+tbEngineBootstrap.toString()+')('+json({search,assets:virtualAssets})+');\n'+tbCurrentBossTeam.toString()+'\n'+tbPlanTeams.toString()+'\nconst __tbSend=(type,data)=>parent.postMessage({channel:'+json(channel)+',type,data},"*");('+tbEngineRun.toString()+')('+json(input)+',__tbSend).catch(e=>__tbSend("error",{message:e.message}));');
   return '<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\' \'unsafe-eval\'; style-src \'unsafe-inline\'; img-src data:; connect-src \'none\'; form-action \'none\'; base-uri \'none\'"><body>'+body+content+'</body>';
 }
 
@@ -442,17 +458,17 @@ function tbSimulationHTML(html, assets, bossId, choice, input, channel) {
   }
   moonPanelTheme();
   const tbPanel=document.createElement('section');tbPanel.id='pokemoon-team-boss';tbPanel.className='moon-panel';
-  tbPanel.innerHTML='<div class="moon-head"><span>🏆</span><span class="moon-title">Time Boss</span><button data-close title="Fechar">×</button></div><div class="moon-body"><div class="moon-state">Boss individual · simulação local</div><p class="moon-note">Busca composições com os Pokémon desta conta e valida o time escolhido em 50 lutas.</p><select data-select aria-label="Boss individual"><option value="">Carregando bosses…</option></select><select data-choice aria-label="Variação do boss" hidden></select><button class="moon-go" data-simulate>Simular 50 lutas</button><button data-cancel hidden>Cancelar simulação</button><div class="moon-detail" data-status>Abra o Time Boss para carregar o catálogo.</div><button class="moon-go" data-apply disabled>Aplicar time simulado</button><div class="moon-detail" data-team hidden></div><p class="moon-foot">Sem lutas reais ou gasto de chaves. A taxa é uma estimativa local, não garantia. Não ensina TMs. O time só muda ao clicar em Aplicar.</p></div>';
+  tbPanel.innerHTML='<div class="moon-head"><span>🏆</span><span class="moon-title">Time Boss</span><button data-close title="Fechar">×</button></div><div class="moon-body"><div class="moon-state">Boss individual · simulação local</div><p class="moon-note">Escolha entre buscar uma composição ou testar exatamente o time salvo no Boss individual. São 50 lutas.</p><select data-select aria-label="Boss individual"><option value="">Carregando bosses…</option></select><select data-choice aria-label="Variação do boss" hidden></select><select data-mode aria-label="Time para simular"><option value="auto">Buscar um time automaticamente</option><option value="current">Usar time atual do Boss individual</option></select><button class="moon-go" data-simulate>Simular 50 lutas</button><button data-cancel hidden>Cancelar simulação</button><div class="moon-detail" data-status>Abra o Time Boss para carregar o catálogo.</div><button class="moon-go" data-apply disabled>Aplicar time simulado</button><div class="moon-detail" data-team hidden></div><p class="moon-foot">Sem lutas reais ou gasto de chaves. A taxa é uma estimativa local, não garantia. Não ensina TMs. O time só muda ao clicar em Aplicar.</p></div>';
   const tbStyle=document.createElement('style');tbStyle.textContent='#pokemoon-team-boss{width:min(370px,calc(100vw - 16px));max-height:calc(100vh - 16px)}#pokemoon-team-boss .moon-body{overflow:auto;max-height:calc(100vh - 75px)}#pokemoon-team-boss select{width:100%;padding:8px;margin:4px 0;background:#101c2a;color:#f4e4b8;border:1px solid #816e43;border-radius:6px}#pokemoon-team-boss [data-team]{max-height:220px;overflow:auto;white-space:pre-wrap}#pokemoon-team-boss button{cursor:pointer}#pokemoon-team-boss button:disabled{opacity:.5;cursor:default}';document.head.appendChild(tbStyle);document.body.appendChild(tbPanel);
   const tbEl=k=>tbPanel.querySelector('[data-'+k+']');
   const tbIcon=document.createElement('canvas');tbIcon.width=32;tbIcon.height=32;const tbCtx=tbIcon.getContext('2d');tbCtx.fillStyle='#d7ad47';for(const r of [[8,5,16,13],[4,7,4,8],[24,7,4,8],[13,18,6,6],[8,25,16,4]])tbCtx.fillRect(...r);tbCtx.fillStyle='#fff0a8';tbCtx.fillRect(10,7,4,8);
   tbPanel.hidden=true;addMoonDockButton('time-boss','Time Boss',tbIcon,tbPanel);moonDock().drag(tbPanel,tbPanel.querySelector('.moon-head'),{storageKey:'pokemoon-team-boss-v1:position'});
   tbEl('close').onclick=()=>{tbPanel.hidden=true;moonDock().sync();};
   const tbSelected=()=>tbBosses.find(b=>b.id===tbEl('select').value);
-  function tbButtons(){tbEl('select').disabled=tbBusy;tbEl('choice').disabled=tbBusy;tbEl('simulate').disabled=tbBusy||!tbSelected()||!tbOwner();tbEl('cancel').hidden=!tbRun;tbEl('apply').disabled=tbBusy||!tbResult||tbResult.total!==50||tbResult.bossId!==tbEl('select').value||tbResult.choice!==(tbEl('choice').value||'');}
+  function tbButtons(){tbEl('mode').disabled=tbBusy;tbEl('select').disabled=tbBusy;tbEl('choice').disabled=tbBusy;tbEl('simulate').disabled=tbBusy||!tbSelected()||!tbOwner();tbEl('cancel').hidden=!tbRun;tbEl('apply').disabled=tbBusy||!tbResult||tbResult.total!==50||tbResult.bossId!==tbEl('select').value||tbResult.choice!==(tbEl('choice').value||'')||(tbResult.mode||'auto')!==tbEl('mode').value;}
   function tbPreview(){
     const r=tbResult;tbEl('team').hidden=!r;
-    tbEl('team').textContent=r?r.wins+'/50 vitórias ('+(r.wins*2)+'%) · '+r.losses+' derrotas'+(r.timeouts?' · '+r.timeouts+' sem conclusão em 10 min':'')+'\nTempo médio: '+Math.round(r.meanSeconds)+' s\n'+(r.choice?'Variação: '+r.choice+'\n':'')+'\n'+r.members.map((p,i)=>(i+1)+'. '+p.name+'\n'+p.moves.join(' · ')).join('\n\n'):'';
+    tbEl('team').textContent=r?(r.mode==='current'?'Time atual do Boss individual':'Seleção automática')+'\n'+r.wins+'/50 vitórias ('+(r.wins*2)+'%) · '+r.losses+' derrotas'+(r.timeouts?' · '+r.timeouts+' sem conclusão em 10 min':'')+'\nTempo médio: '+Math.round(r.meanSeconds)+' s\n'+(r.choice?'Variação: '+r.choice+'\n':'')+'\n'+r.members.map((p,i)=>(i+1)+'. '+p.name+'\n'+p.moves.join(' · ')).join('\n\n'):'';
     tbButtons();if(!tbPanel.hidden)moonDock().clamp(tbPanel);
   }
   function tbChoices(){
@@ -470,8 +486,8 @@ function tbSimulationHTML(html, assets, bossId, choice, input, channel) {
       tbBosses=(data.bosses||[]).filter(b=>b.modo!=='guilda'&&/^[a-z0-9-]{2,40}$/.test(b.id));tbCatalogOwner=owner;tbEl('select').replaceChildren();
       const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Escolha um boss ('+tbBosses.length+')…';tbEl('select').append(placeholder);
       for(const b of [...tbBosses].sort((a,b)=>a.nome.localeCompare(b.nome))){const o=document.createElement('option');o.value=b.id;o.textContent=b.nome+' · Nv '+b.nivelRecomendado+(b.travadoNivel?' · nível bloqueado':'');tbEl('select').append(o);}
-      const saved=tbRead(owner);tbEl('select').value=tbBosses.some(b=>b.id===saved.selected)?saved.selected:'';tbChoices();
-      if(saved.result?.total===50&&saved.result.bossId===tbEl('select').value){tbEl('choice').value=saved.result.choice||'';tbResult=saved.result;}
+      const saved=tbRead(owner);tbEl('mode').value=saved.mode==='current'?'current':'auto';tbEl('select').value=tbBosses.some(b=>b.id===saved.selected)?saved.selected:'';tbChoices();
+      if(saved.result?.total===50&&saved.result.bossId===tbEl('select').value&&(saved.result.mode||'auto')===tbEl('mode').value){tbEl('choice').value=saved.result.choice||'';tbResult=saved.result;}
       tbEl('status').textContent=tbResult?'Resultado salvo nesta conta. Simule novamente para atualizar os testes.':'Escolha o boss e clique em Simular. A triagem vem antes das 50 lutas de validação.';
     }catch(e){if(owner===tbOwner())tbEl('status').textContent=e.message;}finally{tbBusy=false;tbPreview();}
   }
@@ -480,17 +496,18 @@ function tbSimulationHTML(html, assets, bossId, choice, input, channel) {
   }
   async function tbSimulate(){
     if(tbBusy)return;const boss=tbSelected(),owner=tbOwner(),token=tbToken();if(!boss||!owner||!token)return;
-    const choice=tbEl('choice').value||'',run={controller:new AbortController(),owner,token};tbRun=run;tbBusy=true;tbResult=null;tbPreview();
+    const choice=tbEl('choice').value||'',mode=tbEl('mode').value,run={controller:new AbortController(),owner,token,mode};tbRun=run;tbBusy=true;tbResult=null;tbPreview();
     const guard=()=>{if(tbRun!==run||owner!==tbOwner()||token!==tbToken())throw Error('Simulação cancelada ou conta alterada.');};
     const progress=text=>{guard();tbEl('status').textContent=text;};
     try{
       progress('Lendo Pokémon e atributos atuais…');
       const request=tbRequester(token,run.controller.signal),[owned,info]=await Promise.all([request('/api/gm/pokes'),request('/api/boss/equipe')]);guard();
       const pack=await tbAssets(token,boss.id,run.controller.signal,progress);guard();
-      if(window.idleMoonBossSimulator?.version==='1'){
+      if(['1','2'].includes(window.idleMoonBossSimulator?.version)){
+        if(mode==='current'&&window.idleMoonBossSimulator.version!=='2')throw Error('Reabra o Hub atualizado para simular com o time atual.');
         run.nativeId=crypto.randomUUID();run.unsubscribe=window.idleMoonBossSimulator.onProgress(m=>{if(tbRun===run&&m.id===run.nativeId){try{progress(m.data.text);}catch(e){tbCancel(e.message);}}});
         progress('Iniciando simulador isolado do Hub…');
-        const result=await window.idleMoonBossSimulator.run({id:run.nativeId,...pack,input:{boss,choice,owned,info,presets:TB_PRESETS}});guard();
+        const result=await window.idleMoonBossSimulator.run({id:run.nativeId,...pack,input:{boss,choice,owned,info,mode,presets:TB_PRESETS}});guard();
         if(!result.ok)throw Error(result.error);
         tbAcceptResult(run,result.result,boss,choice,owner);return;
       }
@@ -507,12 +524,12 @@ function tbSimulationHTML(html, assets, bossId, choice, input, channel) {
         }catch(e){tbCancel(e.message);}
       };addEventListener('message',run.listener);
       run.timer=setTimeout(()=>tbCancel('O jogo bloqueou o simulador embutido. Atualize o Hub para usar o simulador isolado.'),15000);
-      frame.srcdoc=tbSimulationHTML(pack.html,pack.assets,boss.id,choice,{boss,choice,owned,info,presets:TB_PRESETS},channel);document.body.append(frame);progress('Iniciando triagem local…');
+      frame.srcdoc=tbSimulationHTML(pack.html,pack.assets,boss.id,choice,{boss,choice,owned,info,mode,presets:TB_PRESETS},channel);document.body.append(frame);progress(mode==='current'?'Iniciando as 50 lutas com seu time…':'Iniciando triagem local…');
     }catch(e){if(tbRun===run)tbCancel(e.message);}
   }
   function tbAcceptResult(run,data,boss,choice,owner){
-    if(data.total!==50||data.bossId!==boss.id||data.choice!==choice||data.members?.length!==6||new Set(data.members.map(p=>p.id)).size!==6||!Number.isInteger(data.wins)||data.wins<0||data.wins>50)throw Error('Resultado de simulação inválido.');
-    tbResult=data;tbWrite(owner,{selected:boss.id,result:data});tbFinish(run);tbEl('status').textContent='Validação concluída: '+data.wins+'/50 vitórias. '+(data.wins?'Revise o time abaixo antes de aplicar.':'O time não venceu nesta amostra. Considere melhorar seus Pokémon.');tbPreview();
+    if((data.mode||'auto')!==run.mode||data.total!==50||data.bossId!==boss.id||data.choice!==choice||data.members?.length!==6||new Set(data.members.map(p=>p.id)).size!==6||!Number.isInteger(data.wins)||data.wins<0||data.wins>50)throw Error('Resultado de simulação inválido.');
+    tbResult=data;tbWrite(owner,{selected:boss.id,mode:run.mode,result:data});tbFinish(run);tbEl('status').textContent='Validação concluída: '+data.wins+'/50 vitórias. '+(data.wins?'Revise o time abaixo antes de aplicar.':'O time não venceu nesta amostra. Considere melhorar seus Pokémon.');tbPreview();
   }
   function tbFinish(run){clearTimeout(run.timer);if(run.listener)removeEventListener('message',run.listener);run.unsubscribe?.();run.frame?.remove();run.controller.abort();if(tbRun===run)tbRun=null;tbBusy=false;}
   async function tbApply(){
@@ -531,8 +548,9 @@ function tbSimulationHTML(html, assets, bossId, choice, input, channel) {
   }
   tbEl('select').onchange=()=>{tbChoices();tbWrite(tbOwner(),{selected:tbEl('select').value,result:null});tbEl('status').textContent='Clique em Simular para testar este boss.';};
   tbEl('choice').onchange=()=>{tbResult=null;tbWrite(tbOwner(),{result:null});tbPreview();};
+  tbEl('mode').onchange=()=>{tbResult=null;tbWrite(tbOwner(),{mode:tbEl('mode').value,result:null});tbEl('status').textContent=tbEl('mode').value==='current'?'Usará os seis Pokémon, a ordem, os golpes e as habilidades salvos no Boss individual.':'Buscará uma composição com os Pokémon da conta.';tbPreview();};
   tbEl('simulate').onclick=tbSimulate;tbEl('cancel').onclick=()=>tbCancel();tbEl('apply').onclick=tbApply;
   const tbObserver=new MutationObserver(()=>{tbBind();});tbObserver.observe(tbPanel,{attributes:true,attributeFilter:['hidden']});
-  tbBind();setInterval(tbBind,1000);window.__idleMoonTeamBoss={version:'0.2.1'};
+  tbBind();setInterval(tbBind,1000);window.__idleMoonTeamBoss={version:'0.2.2'};
 
 })();
