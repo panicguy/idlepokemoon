@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PokeMoon - AutoBreed
 // @namespace    https://github.com/panicguy/idlepokemoon
-// @version      0.1.0
+// @version      0.1.1
 // @description  Aprimora o exemplar escolhido e prepara duplicatas no modo Normal.
 // @match        https://idlepokemoon.com.br/play*
 // @match        https://www.idlepokemoon.com.br/play*
@@ -284,18 +284,33 @@
     for (const name of ['first', 'second', 'target']) fields[name].value = config[name];
   }
 
+  moonPanelTheme();
+  const style = document.createElement('style');
+  style.textContent = `
+    #kjd-autobreed select{max-width:100%;min-width:0;padding:5px;border:1px solid #485b77;border-radius:5px;color:#f7e9c8;background:#0d1727;font:inherit}
+    #kjd-autobreed select:focus-visible,#kjd-autobreed button:focus-visible{outline:1px solid #d2ae5a;outline-offset:2px}
+    #kjd-autobreed .breed-main{display:grid;gap:5px}
+    #kjd-autobreed .breed-preview{width:100%;margin-top:9px;padding:7px;border:1px solid #485b77;border-radius:7px;background:#17263c;color:#e8edf6}
+  `;
+  document.head.append(style);
   const panel = document.createElement('section');
   panel.id = 'kjd-autobreed';
+  panel.className = 'moon-panel';
   panel.hidden = true;
-  panel.style.cssText = 'position:fixed;top:100px;left:64px;z-index:2147483645;width:380px;padding:14px;background:#172033;color:#f3ead0;border:1px solid #bd9048;border-radius:12px;font:14px system-ui';
-  panel.innerHTML = `<header style="cursor:move"><strong>AutoBreed</strong>
-    <button data-field="close" style="float:right" aria-label="Fechar">×</button></header>
-    <p><label>Pokémon principal <select data-field="main" style="width:100%"></select></label></p>
-    <p><label>Prioridade no empate <select data-field="first"></select></label>
-    <label>Equilibrar com <select data-field="second"><option value="">Nenhum</option></select></label></p>
-    <p><label>Meta <select data-field="target">${[1, 2, 3, 4, 5].map(n => `<option value="${n}">${n}★</option>`).join('')}</select></label></p>
-    <button data-field="preview">Simular</button> <button data-field="toggle">Ligar automático</button>
-    <p data-field="status" role="status">Carregando…</p>`;
+  panel.innerHTML = `<header class="moon-head"><canvas width="32" height="32" aria-hidden="true"></canvas>
+    <span class="moon-title">AutoBreed<span class="moon-dot"></span></span>
+    <button type="button" data-field="close" aria-label="Fechar">×</button></header>
+    <div class="moon-body">
+      <div class="moon-state" data-field="mode">Desligado</div>
+      <div class="moon-section">Aprimoramento</div>
+      <label class="moon-line breed-main">Pokémon principal <select data-field="main"></select></label>
+      <label class="moon-line">Prioridade no empate <select data-field="first"></select></label>
+      <label class="moon-line">Equilibrar com <select data-field="second"><option value="">Nenhum</option></select></label>
+      <label class="moon-line">Meta <select data-field="target">${[1, 2, 3, 4, 5].map(n => `<option value="${n}">${n}★</option>`).join('')}</select></label>
+      <button type="button" class="breed-preview" data-field="preview">Simular</button>
+      <button type="button" class="moon-go" data-field="toggle">Ligar automação</button>
+      <div class="moon-detail" data-field="status" role="status">Carregando…</div>
+    </div>`;
   const fields = Object.fromEntries([...panel.querySelectorAll('[data-field]')].map(el => [el.dataset.field, el]));
   for (const [value, label] of Object.entries(stats)) {
     fields.first.add(new Option(label, value));
@@ -304,7 +319,13 @@
   document.body.append(panel);
   const save = () => localStorage.setItem(storageKey, JSON.stringify(config));
   const status = value => { fields.status.textContent = value; };
-  const controls = () => { fields.toggle.textContent = config?.active ? 'Pausar automático' : 'Ligar automático'; };
+  const controls = () => {
+    const active = Boolean(config?.active);
+    panel.classList.toggle('moon-active', active);
+    fields.toggle.classList.toggle('active', active);
+    fields.toggle.textContent = active ? 'Desligar automação' : 'Ligar automação';
+    fields.mode.textContent = active ? 'Ligado · aprimorando em segundo plano' : 'Desligado';
+  };
   fields.close.onclick = () => { panel.hidden = true; };
   for (const name of ['main', 'first', 'second', 'target']) {
     fields[name].onchange = () => {
@@ -433,16 +454,21 @@
   const icon = document.createElement('canvas');
   icon.width = icon.height = 32;
   const sprite = new Image();
+  const icons = [icon, panel.querySelector('.moon-head canvas')];
+  for (const canvas of icons) {
+    const ctx = canvas.getContext('2d');
+    ctx.font = '28px sans-serif';
+    ctx.fillStyle = '#ffcf56';
+    ctx.fillText('★', 3, 26);
+  }
   sprite.onload = () => {
-    const ctx = icon.getContext('2d');
-    ctx.clearRect(0, 0, 32, 32);
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(sprite, 0, 0, 32, 32);
+    for (const canvas of icons) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, 32, 32);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(sprite, 0, 0, 32, 32);
+    }
   };
-  const ctx = icon.getContext('2d');
-  ctx.font = '28px sans-serif';
-  ctx.fillStyle = '#ffcf56';
-  ctx.fillText('★', 3, 26);
   sprite.src = (window.IPM_AV || String)('icons/tb-aprimoramento.png');
 
   const dock = moonDock();
