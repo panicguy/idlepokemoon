@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Troca de Figurinhas
 // @namespace    https://github.com/panicguy/idlepokemoon
-// @version      0.1.0
+// @version      0.1.1
 // @description  Troca figurinhas repetidas entre contas do Hub.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -20,38 +20,40 @@
     }
     if (!document.getElementById('kjd-moon-dock-style')) {
       const css = document.createElement('style'); css.id = 'kjd-moon-dock-style';
-      css.textContent = '#kjd-moon-dock{position:fixed;left:8px;top:50%;transform:translateY(-50%);z-index:2147483646;display:flex;flex-direction:column;gap:6px;padding:7px 5px;border:2px solid #785a28;border-radius:10px;background:#14100add;backdrop-filter:blur(4px);max-height:calc(100vh - 16px);overflow-y:auto;box-sizing:border-box}#kjd-moon-dock button{width:36px;height:36px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:2px;border:1px solid transparent;border-radius:8px;background:transparent;cursor:pointer;font:23px system-ui;color:#ffe2a0}#kjd-moon-dock button:hover{background:#ffffff22}#kjd-moon-dock button.active{background:#d5aa4533;border-color:#d5aa45}#kjd-moon-dock canvas{width:29px;height:29px;object-fit:contain;image-rendering:pixelated;pointer-events:none}[data-kjd-panel]{box-sizing:border-box!important;max-width:calc(100vw - 16px)!important;max-height:calc(100vh - 16px)!important;overflow-y:auto!important}[data-kjd-panel][hidden]{display:none!important}#ipm-rota-best input{box-sizing:border-box;min-width:0}#ipm-rota-best label{min-width:0}';
+      css.textContent = '#kjd-moon-dock{position:fixed;left:8px;top:50%;transform:translateY(-50%);z-index:2147483646;display:flex;flex-direction:column;align-items:center;gap:6px;padding:7px 5px;border:2px solid #785a28;border-radius:10px;background:#14100add;backdrop-filter:blur(4px);width:50px;max-height:min(300px,calc(100vh - 16px));overflow:hidden;box-sizing:border-box}#kjd-moon-dock .moon-dock-scroll{display:flex;flex-direction:column;align-items:center;align-self:stretch;gap:6px;min-width:0;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}#kjd-moon-dock .moon-dock-scroll::-webkit-scrollbar{display:none}#kjd-moon-dock button{width:36px;height:36px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:2px;border:1px solid transparent;border-radius:8px;background:transparent;cursor:pointer;font:23px system-ui;color:#ffe2a0}#kjd-moon-dock button:hover{background:#ffffff22}#kjd-moon-dock button.active{background:#d5aa4533;border-color:#d5aa45}#kjd-moon-dock canvas{width:29px;height:29px;object-fit:contain;image-rendering:pixelated;pointer-events:none}[data-kjd-panel]{box-sizing:border-box!important;max-width:calc(100vw - 16px)!important;max-height:calc(100vh - 16px)!important;overflow-y:auto!important}[data-kjd-panel][hidden]{display:none!important}#ipm-rota-best input{box-sizing:border-box;min-width:0}#ipm-rota-best label{min-width:0}';
       (document.head || document.documentElement).appendChild(css);
     }
     const foldKey = 'kjd-moon-dock-fold-v1';
     let folded = false, anchor = null, motion = 0, animations = [];
     try { const saved = JSON.parse(localStorage.getItem(foldKey) || '{}'); folded = saved.folded === true; if (Number.isFinite(saved.top)) anchor = saved.top; } catch (_) {}
     const foldStyle = document.createElement('style');
-    foldStyle.textContent = '#kjd-moon-dock [data-dock-fold]{order:-1;position:sticky;top:0;z-index:2;background:#211d15;border-color:#806b3c;font-size:20px}#kjd-moon-dock [data-dock-fold]:focus-visible{outline:2px solid #ffe2a0;outline-offset:-2px}#kjd-moon-dock button[hidden]{display:none!important}#kjd-moon-dock.is-folding{overflow:hidden}#kjd-moon-dock [data-dock-chevron]{display:block;transition:transform .28s ease}#kjd-moon-dock.is-folded [data-dock-chevron]{transform:rotate(180deg)}@media(prefers-reduced-motion:reduce){#kjd-moon-dock [data-dock-chevron]{transition:none}}';
+    foldStyle.textContent = '#kjd-moon-dock [data-dock-fold]{width:25px;height:24px;background:#211d15;border-color:#806b3c;border-radius:6px;font-size:15px}#kjd-moon-dock [data-dock-fold]:focus-visible{outline:2px solid #ffe2a0;outline-offset:-2px}#kjd-moon-dock button[hidden]{display:none!important}#kjd-moon-dock.is-folding{overflow:hidden}#kjd-moon-dock.is-folded:not(.is-folding) .moon-dock-scroll{display:none}#kjd-moon-dock [data-dock-chevron]{display:block;transition:transform .28s ease}#kjd-moon-dock.is-folded [data-dock-chevron]{transform:rotate(180deg)}@media(prefers-reduced-motion:reduce){#kjd-moon-dock [data-dock-chevron]{transition:none}}';
     (document.head || document.documentElement).appendChild(foldStyle);
     const foldButton = document.createElement('button');
     foldButton.type = 'button'; foldButton.dataset.dockFold = ''; foldButton.innerHTML = '<span data-dock-chevron aria-hidden="true">⌃</span>';
-    dock.prepend(foldButton);
+    const list = document.createElement('div');
+    list.className = 'moon-dock-scroll';
+    dock.append(foldButton, list);
     function foldLabel() {
       foldButton.title = folded ? 'Expandir scripts' : 'Recolher scripts';
       foldButton.setAttribute('aria-label', foldButton.title); foldButton.setAttribute('aria-expanded', String(!folded));
       dock.classList.toggle('is-folded', folded);
     }
     function pin(top) {
-      anchor = Math.max(8, Math.min(top, Math.max(8, innerHeight - dock.getBoundingClientRect().height - 8)));
+      anchor = Math.max(8, Math.min(top, Math.max(8, innerHeight - 300 - 8)));
       dock.style.top = anchor + 'px'; dock.style.transform = 'none';
     }
     async function setFolded(value, animate = true) {
       const turn = ++motion, start = dock.getBoundingClientRect();
       animations.forEach(a => a.cancel()); animations = [];
-      folded = value === true; foldLabel();
+      folded = value === true; dock.classList.add('is-folding'); foldLabel();
       const buttons = [...entries.values()].map(e => e.button);
       if (folded) { document.querySelectorAll('[data-kjd-panel]').forEach(p => { p.hidden = true; }); sync(); }
       buttons.forEach(b => { b.hidden = false; b.inert = folded; });
       dock.style.height = 'auto';
-      const endHeight = folded ? 54 : dock.getBoundingClientRect().height;
+      const endHeight = folded ? 42 : dock.getBoundingClientRect().height;
       dock.style.height = start.height + 'px';
-      pin(Math.min(start.top, innerHeight - endHeight - 8));
+      pin(anchor ?? start.top);
       dock.classList.add('is-folding');
       const duration = animate && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 320 : 0;
       if (duration) {
@@ -65,7 +67,7 @@
       }
       if (turn !== motion) return;
       buttons.forEach(b => { b.hidden = folded; b.inert = folded; });
-      dock.style.height = folded ? '54px' : 'auto';
+      dock.style.height = folded ? '42px' : 'auto';
       animations.forEach(a => a.cancel()); animations = [];
       dock.classList.remove('is-folding'); pin(anchor ?? start.top);
       try { localStorage.setItem(foldKey, JSON.stringify({folded,top:anchor})); } catch (_) {}
@@ -111,8 +113,9 @@
     foldButton.addEventListener('pointercancel',finishDockDrag);
     foldButton.addEventListener('lostpointercapture',finishDockDrag);
     foldLabel();
-    if (anchor !== null) pin(anchor);
-    if (folded) dock.style.height = '54px';
+    pin(anchor ?? Math.max(8, (innerHeight - 300) / 2));
+    window.addEventListener('resize', () => placeDock(dock.getBoundingClientRect().left, anchor));
+    if (folded) dock.style.height = '42px';
     function clamp(pane, x, y) {
       if (pane.hidden) return;
       const rect = pane.getBoundingClientRect();
@@ -143,9 +146,9 @@
         sync();
       };
       const observer = new MutationObserver(sync); observer.observe(pane, { attributes: true, attributeFilter: ['hidden'] });
-      entries.set(id, { pane, button, observer }); dock.appendChild(button); sync();
+      entries.set(id, { pane, button, observer }); list.appendChild(button); sync();
       button.hidden = folded; button.inert = folded;
-      for (const key of ['autocatch', 'autorefill', 'bestiario']) { const item = entries.get(key); if (item) dock.appendChild(item.button); }
+      for (const key of ['autocatch', 'autorefill', 'bestiario']) { const item = entries.get(key); if (item) list.appendChild(item.button); }
       if (anchor !== null && !dock.classList.contains('is-folding')) pin(anchor);
       return button;
     }
@@ -247,7 +250,7 @@
   let prazo;
 
   function atualizaBotoes() {
-    select.disabled = ocupado || !select.options.length;
+    select.disabled = ocupado || !select.options.length || document.documentElement.dataset.kjdFigurinhas !== '1';
     revisar.disabled = select.disabled;
     executar.disabled = ocupado;
   }
@@ -297,6 +300,7 @@
     }
     status.textContent = detail.mensagem || '';
     atualizaBotoes();
+    if (!painel.hidden) moonDock().clamp(painel);
   });
   atualizaBotoes();
 })();
