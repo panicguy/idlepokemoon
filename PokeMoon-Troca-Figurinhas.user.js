@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Troca de Figurinhas
 // @namespace    https://github.com/panicguy/idlepokemoon
-// @version      0.1.1
+// @version      0.2.0
 // @description  Troca figurinhas repetidas entre contas do Hub.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -205,7 +205,9 @@
     <header class="moon-head"><strong class="moon-title">Troca de Figurinhas</strong>
       <button type="button" data-fechar aria-label="Fechar painel">×</button></header>
     <div class="moon-body">
-      <label class="moon-line">Trocar com <select aria-label="Conta para trocar"></select></label>
+      <label class="moon-line">Quem envia <select data-origem></select></label>
+      <label class="moon-line">Quem recebe <select data-destino></select></label>
+      <label class="moon-line">Incluir repetidas no sentido inverso <input type="checkbox" data-ida-volta></label>
       <button type="button" class="moon-go" data-revisar>Revisar figurinhas</button>
       <div class="moon-detail" data-plano hidden></div>
       <button type="button" class="moon-go" data-executar hidden>Iniciar troca em segundo plano</button>
@@ -241,17 +243,21 @@
   const acesso = addMoonDockButton(id, titulo, icone, painel);
   moonDock().drag(painel, painel.querySelector('header'), { storageKey: 'kjd-figurinhas-posicao' });
 
-  const select = painel.querySelector('select');
+  const origem = painel.querySelector('[data-origem]');
+  const destino = painel.querySelector('[data-destino]');
+  const idaVolta = painel.querySelector('[data-ida-volta]');
   const revisar = painel.querySelector('[data-revisar]');
   const executar = painel.querySelector('[data-executar]');
   const plano = painel.querySelector('[data-plano]');
   const status = painel.querySelector('[data-status]');
+  let contas = [];
   let ocupado = false;
   let prazo;
 
   function atualizaBotoes() {
-    select.disabled = ocupado || !select.options.length || document.documentElement.dataset.kjdFigurinhas !== '1';
-    revisar.disabled = select.disabled;
+    const indisponivel = ocupado || contas.length < 2 || document.documentElement.dataset.kjdFigurinhas !== '2';
+    origem.disabled = destino.disabled = idaVolta.disabled = indisponivel;
+    revisar.disabled = indisponivel || !origem.value || !destino.value || origem.value === destino.value;
     executar.disabled = ocupado;
   }
   function limpaPlano() {
@@ -260,7 +266,7 @@
   }
   function pede(rotação, espera = 30000) {
     if (ocupado) return;
-    if (document.documentElement.dataset.kjdFigurinhas !== '1') {
+    if (document.documentElement.dataset.kjdFigurinhas !== '2') {
       status.textContent = 'Instale a ponte de figurinhas no Hub.';
       return;
     }
@@ -278,9 +284,21 @@
   acesso.addEventListener('click', () => {
     if (!painel.hidden && !ocupado) { limpaPlano(); pede('contas'); }
   });
-  select.onchange = limpaPlano;
-  revisar.onclick = () => { limpaPlano(); pede('revisar/' + select.value); };
-  executar.onclick = () => { executar.hidden = true; pede('executar/' + select.value, 240000); };
+  function preenche(campo, lista, favorito) {
+    const escolhido = lista.some((c) => String(c.slot) === campo.value) ? campo.value : favorito;
+    campo.replaceChildren(...lista.map(({ slot, nome }) => new Option(nome, slot)));
+    if (lista.some((c) => String(c.slot) === escolhido)) campo.value = escolhido;
+  }
+  function ajustaDestino() {
+    preenche(destino, contas.filter((c) => String(c.slot) !== origem.value));
+    limpaPlano();
+    atualizaBotoes();
+  }
+  origem.onchange = ajustaDestino;
+  destino.onchange = idaVolta.onchange = limpaPlano;
+  const caminho = () => origem.value + '/' + destino.value + '/' + Number(idaVolta.checked);
+  revisar.onclick = () => { limpaPlano(); pede('revisar/' + caminho()); };
+  executar.onclick = () => { executar.hidden = true; pede('executar/' + caminho(), 240000); };
   window.addEventListener('kjd-figurinhas-retorno', ({ detail }) => {
     if (detail.progresso) {
       status.textContent = detail.progresso;
@@ -289,9 +307,9 @@
     clearTimeout(prazo);
     ocupado = false;
     if (Array.isArray(detail.contas)) {
-      const anterior = select.value;
-      select.replaceChildren(...detail.contas.map(({ slot, nome }) => new Option(nome, slot)));
-      if (detail.contas.some((c) => String(c.slot) === anterior)) select.value = anterior;
+      contas = detail.contas;
+      preenche(origem, contas, String(detail.slotPainel));
+      ajustaDestino();
     }
     if (detail.plano) {
       plano.textContent = detail.plano.map(({ nome, cartas }) =>
