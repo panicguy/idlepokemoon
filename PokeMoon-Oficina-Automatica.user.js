@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Poke Moon - Oficina Automática
 // @namespace    local.pokemoon.profissoes
-// @version      1.7.1
-// @description  Bancada, estoque elemental por seleção, ampulheta opcional, pedidos, estufa e expedições.
+// @version      1.7.2
+// @description  Bancada com estoque disponível quando a busca está desligada, prioridade de XP, consumíveis, pedidos, estufa e expedições.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
 // @grant        none
@@ -97,9 +97,16 @@ function professionPlan(v, options = {}, catalog = null) {
       if(!x.meu && !x.aceito && x.pode && !x.res && c?.cap>=x.n && quality(c.r,x.qmin || 0,x.n) && duration>0 && wait+duration*x.n < Number(x.resta)*0.8)
         return {op:'pedAceitar',args:{id:x.id},label:'Aceitando pedido com insumos e prazo'};
     }
+    // Busca desligada limita viagens, não a produção com o estoque existente.
+    // Pedidos e receitas com XP continuam à frente do preenchimento sem XP.
+    if(o.bench && o.gather===false) {
+      const list=recipes.flatMap(r=>choices(r)).filter(c=>!(o.stockManagedRids||[]).includes(c.r.id) && c.cap>0 && Number(c.r.xp?.vFim ?? c.r.xp?.v)===0 && Number(c.r.tempo?.fim)>0);
+      list.sort((a,b)=>a.r.tempo.fim-b.r.tempo.fim || b.r.nivel-a.r.nivel || String(a.r.id).localeCompare(String(b.r.id)));
+      if(list.length) return craft(list[0],list[0].cap,'Enchendo fila com estoque · sem XP: '+list[0].r.nome);
+    }
   }
   const garden=v.estufa?.pode && o.garden && (v.estufa.cant || []).some(c=>c.vazio) && !(Number(v.estufa.adubo?.gratisHoje)>0) && v.estufa.adubo?.porGrau>0;
-  return {wait:(free?'Aguardando insumos ou receita com XP.':'Fila cheia; aguardando conclusão.')+(garden?' Estufa: saldo ou insumos; aguardando plantio elegível.':'')};
+  return {wait:(free?(o.gather===false?'Aguardando materiais para as receitas habilitadas; busca desligada.':'Aguardando insumos ou receita com XP.'):'Fila cheia; aguardando conclusão.')+(garden?' Estufa: saldo ou insumos; aguardando plantio elegível.':'')};
 }
 
 const professionElements={normal:'Normal',fire:'Fogo',water:'Água',electric:'Elétrico',grass:'Planta',ice:'Gelo',fighting:'Lutador',poison:'Venenoso',ground:'Terra',flying:'Voador',psychic:'Psíquico',bug:'Inseto',rock:'Pedra',ghost:'Fantasma',dragon:'Dragão',dark:'Sombrio',steel:'Aço',fairy:'Fada'};
@@ -225,7 +232,7 @@ function gatherEligibleZones(origin,zones,allowed,level) {
 }
 function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.activeId);return typeof a?.tmArea==='string' && a.tmArea.trim().length>0;}
 
-  // BEGIN SHARED MOON DOCK — embedded in each standalone userscript.
+// BEGIN SHARED MOON DOCK — embedded in each standalone userscript.
   function moonDock() {
     if (window.__kjdMoonDockV2) return window.__kjdMoonDockV2;
     const entries = new Map();
@@ -236,38 +243,40 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
     }
     if (!document.getElementById('kjd-moon-dock-style')) {
       const css = document.createElement('style'); css.id = 'kjd-moon-dock-style';
-      css.textContent = '#kjd-moon-dock{position:fixed;left:8px;top:50%;transform:translateY(-50%);z-index:2147483646;display:flex;flex-direction:column;gap:6px;padding:7px 5px;border:2px solid #785a28;border-radius:10px;background:#14100add;backdrop-filter:blur(4px);max-height:calc(100vh - 16px);overflow-y:auto;box-sizing:border-box}#kjd-moon-dock button{width:36px;height:36px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:2px;border:1px solid transparent;border-radius:8px;background:transparent;cursor:pointer;font:23px system-ui;color:#ffe2a0}#kjd-moon-dock button:hover{background:#ffffff22}#kjd-moon-dock button.active{background:#d5aa4533;border-color:#d5aa45}#kjd-moon-dock canvas{width:29px;height:29px;object-fit:contain;image-rendering:pixelated;pointer-events:none}[data-kjd-panel]{box-sizing:border-box!important;max-width:calc(100vw - 16px)!important;max-height:calc(100vh - 16px)!important;overflow-y:auto!important}[data-kjd-panel][hidden]{display:none!important}#ipm-rota-best input{box-sizing:border-box;min-width:0}#ipm-rota-best label{min-width:0}';
+      css.textContent = '#kjd-moon-dock{position:fixed;left:8px;top:50%;transform:translateY(-50%);z-index:2147483646;display:flex;flex-direction:column;align-items:center;gap:6px;padding:7px 5px;border:2px solid #785a28;border-radius:10px;background:#14100add;backdrop-filter:blur(4px);width:50px;max-height:min(300px,calc(100vh - 16px));overflow:hidden;box-sizing:border-box}#kjd-moon-dock .moon-dock-scroll{display:flex;flex-direction:column;align-items:center;align-self:stretch;gap:6px;min-width:0;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}#kjd-moon-dock .moon-dock-scroll::-webkit-scrollbar{display:none}#kjd-moon-dock button{width:36px;height:36px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:2px;border:1px solid transparent;border-radius:8px;background:transparent;cursor:pointer;font:23px system-ui;color:#ffe2a0}#kjd-moon-dock button:hover{background:#ffffff22}#kjd-moon-dock button.active{background:#d5aa4533;border-color:#d5aa45}#kjd-moon-dock canvas{width:29px;height:29px;object-fit:contain;image-rendering:pixelated;pointer-events:none}[data-kjd-panel]{box-sizing:border-box!important;max-width:calc(100vw - 16px)!important;max-height:calc(100vh - 16px)!important;overflow-y:auto!important}[data-kjd-panel][hidden]{display:none!important}#ipm-rota-best input{box-sizing:border-box;min-width:0}#ipm-rota-best label{min-width:0}';
       (document.head || document.documentElement).appendChild(css);
     }
     const foldKey = 'kjd-moon-dock-fold-v1';
     let folded = false, anchor = null, motion = 0, animations = [];
     try { const saved = JSON.parse(localStorage.getItem(foldKey) || '{}'); folded = saved.folded === true; if (Number.isFinite(saved.top)) anchor = saved.top; } catch (_) {}
     const foldStyle = document.createElement('style');
-    foldStyle.textContent = '#kjd-moon-dock [data-dock-fold]{order:-1;position:sticky;top:0;z-index:2;background:#211d15;border-color:#806b3c;font-size:20px}#kjd-moon-dock [data-dock-fold]:focus-visible{outline:2px solid #ffe2a0;outline-offset:-2px}#kjd-moon-dock button[hidden]{display:none!important}#kjd-moon-dock.is-folding{overflow:hidden}#kjd-moon-dock [data-dock-chevron]{display:block;transition:transform .28s ease}#kjd-moon-dock.is-folded [data-dock-chevron]{transform:rotate(180deg)}@media(prefers-reduced-motion:reduce){#kjd-moon-dock [data-dock-chevron]{transition:none}}';
+    foldStyle.textContent = '#kjd-moon-dock [data-dock-fold]{width:25px;height:24px;background:#211d15;border-color:#806b3c;border-radius:6px;font-size:15px}#kjd-moon-dock [data-dock-fold]:focus-visible{outline:2px solid #ffe2a0;outline-offset:-2px}#kjd-moon-dock button[hidden]{display:none!important}#kjd-moon-dock.is-folding{overflow:hidden}#kjd-moon-dock.is-folded:not(.is-folding) .moon-dock-scroll{display:none}#kjd-moon-dock [data-dock-chevron]{display:block;transition:transform .28s ease}#kjd-moon-dock.is-folded [data-dock-chevron]{transform:rotate(180deg)}@media(prefers-reduced-motion:reduce){#kjd-moon-dock [data-dock-chevron]{transition:none}}';
     (document.head || document.documentElement).appendChild(foldStyle);
     const foldButton = document.createElement('button');
     foldButton.type = 'button'; foldButton.dataset.dockFold = ''; foldButton.innerHTML = '<span data-dock-chevron aria-hidden="true">⌃</span>';
-    dock.prepend(foldButton);
+    const list = document.createElement('div');
+    list.className = 'moon-dock-scroll';
+    dock.append(foldButton, list);
     function foldLabel() {
       foldButton.title = folded ? 'Expandir scripts' : 'Recolher scripts';
       foldButton.setAttribute('aria-label', foldButton.title); foldButton.setAttribute('aria-expanded', String(!folded));
       dock.classList.toggle('is-folded', folded);
     }
     function pin(top) {
-      anchor = Math.max(8, Math.min(top, Math.max(8, innerHeight - dock.getBoundingClientRect().height - 8)));
+      anchor = Math.max(8, Math.min(top, Math.max(8, innerHeight - 300 - 8)));
       dock.style.top = anchor + 'px'; dock.style.transform = 'none';
     }
     async function setFolded(value, animate = true) {
       const turn = ++motion, start = dock.getBoundingClientRect();
       animations.forEach(a => a.cancel()); animations = [];
-      folded = value === true; foldLabel();
+      folded = value === true; dock.classList.add('is-folding'); foldLabel();
       const buttons = [...entries.values()].map(e => e.button);
       if (folded) { document.querySelectorAll('[data-kjd-panel]').forEach(p => { p.hidden = true; }); sync(); }
       buttons.forEach(b => { b.hidden = false; b.inert = folded; });
       dock.style.height = 'auto';
-      const endHeight = folded ? 54 : dock.getBoundingClientRect().height;
+      const endHeight = folded ? 42 : dock.getBoundingClientRect().height;
       dock.style.height = start.height + 'px';
-      pin(Math.min(start.top, innerHeight - endHeight - 8));
+      pin(anchor ?? start.top);
       dock.classList.add('is-folding');
       const duration = animate && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 320 : 0;
       if (duration) {
@@ -281,7 +290,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
       }
       if (turn !== motion) return;
       buttons.forEach(b => { b.hidden = folded; b.inert = folded; });
-      dock.style.height = folded ? '54px' : 'auto';
+      dock.style.height = folded ? '42px' : 'auto';
       animations.forEach(a => a.cancel()); animations = [];
       dock.classList.remove('is-folding'); pin(anchor ?? start.top);
       try { localStorage.setItem(foldKey, JSON.stringify({folded,top:anchor})); } catch (_) {}
@@ -327,8 +336,9 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
     foldButton.addEventListener('pointercancel',finishDockDrag);
     foldButton.addEventListener('lostpointercapture',finishDockDrag);
     foldLabel();
-    if (anchor !== null) pin(anchor);
-    if (folded) dock.style.height = '54px';
+    pin(anchor ?? Math.max(8, (innerHeight - 300) / 2));
+    window.addEventListener('resize', () => placeDock(dock.getBoundingClientRect().left, anchor));
+    if (folded) dock.style.height = '42px';
     function clamp(pane, x, y) {
       if (pane.hidden) return;
       const rect = pane.getBoundingClientRect();
@@ -359,9 +369,9 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
         sync();
       };
       const observer = new MutationObserver(sync); observer.observe(pane, { attributes: true, attributeFilter: ['hidden'] });
-      entries.set(id, { pane, button, observer }); dock.appendChild(button); sync();
+      entries.set(id, { pane, button, observer }); list.appendChild(button); sync();
       button.hidden = folded; button.inert = folded;
-      for (const key of ['autocatch', 'autorefill', 'bestiario']) { const item = entries.get(key); if (item) dock.appendChild(item.button); }
+      for (const key of ['autocatch', 'autorefill', 'bestiario']) { const item = entries.get(key); if (item) list.appendChild(item.button); }
       if (anchor !== null && !dock.classList.contains('is-folding')) pin(anchor);
       return button;
     }
@@ -525,7 +535,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
     gathering.phase='hunting';saveGather();return true;
   }
   const panel=document.createElement('section');panel.id='ipm-auto-prof';panel.className='moon-panel';moonPanelTheme();
-  panel.innerHTML=`<div class="moon-head" data-handle><span data-icon></span><span class="moon-title">Oficina Automática<span class="moon-dot"></span></span><button data-close title="Fechar painel">×</button></div><div class="moon-body"><div class="moon-state"><span data-mode>Desligada</span><span data-prof>Detectando profissão…</span></div><p class="moon-note">Bancada prioriza o maior XP por craft. Busca completa a fila antes de voltar.</p><label class="moon-line">Bancada e coleta<input type="checkbox" data-opt="bench" checked></label><label class="moon-line" title="Melhora a qualidade usando o Foco disponível; continua sem Foco quando acabar.">Usar Foco automaticamente<input type="checkbox" data-opt="focus" checked></label><label class="moon-line">Pedidos de NPC<input type="checkbox" data-opt="npc" checked></label><label class="moon-line">Pedidos de jogadores<input type="checkbox" data-opt="public" checked></label><label class="moon-line">Estufa · plantio sem teto<input type="checkbox" data-opt="garden" checked></label><label class="moon-line">Expedições automáticas<input type="checkbox" data-opt="exped" checked></label><label class="moon-line" data-route-row>Rota da expedição<select data-route><option value="media">Caverna de Cristal</option></select></label><label class="moon-line">Usar Mapa Antigo<input type="checkbox" data-opt="expedMap" checked></label><label class="moon-line">Buscar insumos nas hunts<input type="checkbox" data-opt="gather"></label><label class="moon-line" title="Mantém 50 Fragmentos Estelares T6. Enfileira peneiras em lote e preenche o restante com crafts normais. Fabrica Peneira Fina quando possível, mesmo sem XP, sem comprar itens nem usar chaves. Com Buscar insumos nas hunts ligado, busca Fada T2 e Semente T2.">Fabricar Fragmento Estelar?<input type="checkbox" data-opt="fragmentoEstelar"></label><div class="moon-note" data-stellar hidden></div><button class="moon-go" data-toggle>Ligar automação</button><div class="moon-detail" role="status" data-status>Começa desligada. Sua escolha fica salva por personagem.</div><div class="moon-foot">Sem compras de itens, diamantes ou pontos de talento.<br>Dinheiro para adubo e provisões de expedição; sem teto acumulado.<br><span data-focus>Foco: aguardando dados</span><br><span data-budget>Adubo gasto: $0</span></div></div>`;
+  panel.innerHTML=`<div class="moon-head" data-handle><span data-icon></span><span class="moon-title">Oficina Automática<span class="moon-dot"></span></span><button data-close title="Fechar painel">×</button></div><div class="moon-body"><div class="moon-state"><span data-mode>Desligada</span><span data-prof>Detectando profissão…</span></div><p class="moon-note">Prioriza XP. Busca desligada: usa o estoque, mesmo sem XP, sem trocar de hunt.</p><label class="moon-line">Bancada e coleta<input type="checkbox" data-opt="bench" checked></label><label class="moon-line" title="Melhora a qualidade usando o Foco disponível; continua sem Foco quando acabar.">Usar Foco automaticamente<input type="checkbox" data-opt="focus" checked></label><label class="moon-line">Pedidos de NPC<input type="checkbox" data-opt="npc" checked></label><label class="moon-line">Pedidos de jogadores<input type="checkbox" data-opt="public" checked></label><label class="moon-line">Estufa · plantio sem teto<input type="checkbox" data-opt="garden" checked></label><label class="moon-line">Expedições automáticas<input type="checkbox" data-opt="exped" checked></label><label class="moon-line" data-route-row>Rota da expedição<select data-route><option value="media">Caverna de Cristal</option></select></label><label class="moon-line">Usar Mapa Antigo<input type="checkbox" data-opt="expedMap" checked></label><label class="moon-line">Buscar insumos nas hunts<input type="checkbox" data-opt="gather" title="Desligado: fabrica com os materiais disponíveis; se não houver receita com XP, usa receitas sem XP. Não busca recursos em hunts."></label><label class="moon-line" title="Mantém 50 Fragmentos Estelares T6. Enfileira peneiras em lote e preenche o restante com crafts normais. Fabrica Peneira Fina quando possível, mesmo sem XP, sem comprar itens nem usar chaves. Com Buscar insumos nas hunts ligado, busca Fada T2 e Semente T2.">Fabricar Fragmento Estelar?<input type="checkbox" data-opt="fragmentoEstelar"></label><div class="moon-note" data-stellar hidden></div><button class="moon-go" data-toggle>Ligar automação</button><div class="moon-detail" role="status" data-status>Começa desligada. Sua escolha fica salva por personagem.</div><div class="moon-foot">Sem compras de itens, diamantes ou pontos de talento.<br>Dinheiro para adubo e provisões de expedição; sem teto acumulado.<br><span data-focus>Foco: aguardando dados</span><br><span data-budget>Adubo gasto: $0</span></div></div>`;
   function hammerIcon(){const c=document.createElement('canvas');c.width=c.height=32;c.style.imageRendering='pixelated';const g=c.getContext('2d'),im=new Image();im.onload=()=>{if(g){g.imageSmoothingEnabled=false;g.drawImage(im,0,0,32,32);}};im.src='data:image/png;base64,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';return c;}
   panel.querySelector('[data-icon]').replaceWith(hammerIcon());document.body.appendChild(panel);
   addMoonDockButton('profissoes','Oficina Automática — Martelo',hammerIcon(),panel);
@@ -582,7 +592,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
       panel.querySelector('[data-stock-status]').textContent=stock.label||stock.wait||'Selecione os elementos que deseja fabricar.';
       const hourglass=professionHourglassPlan(v,opt);
       const normalView=opt.fragmentoEstelar?structuredClone(v):v;
-      if(opt.fragmentoEstelar){normalView.nucleo.prof.receitas=normalView.nucleo.prof.receitas.filter(r=>r.id!=='pes-29' && (!stellarNeed || ![...(r.custo||[]),...(r.tipos||[]).flatMap(t=>t.custo||[])].some(c=>c.id==='fragmento estelar' && Number(c.grau)===5 || ['enchanted gem','semente'].includes(c.id) && Number(c.grau)===2)));const f=normalView.nucleo.prof.fila,keep=Math.max(0,Number(stellar?.reserveSlots)||0);f.livres={vagas:Math.max(0,Number(f.livres?.vagas)||0),espera:Math.max(0,Number(f.livres?.espera)||0)};let reserve=keep;for(const k of ['espera','vagas']){const take=Math.min(f.livres[k],reserve);f.livres[k]-=take;reserve-=take;}}
+      if(opt.fragmentoEstelar){normalView.nucleo.prof.receitas=normalView.nucleo.prof.receitas.filter(r=>r.id!=='pes-29' && (!stellarNeed || !opt.gather || ![...(r.custo||[]),...(r.tipos||[]).flatMap(t=>t.custo||[])].some(c=>c.id==='fragmento estelar' && Number(c.grau)===5 || ['enchanted gem','semente'].includes(c.id) && Number(c.grau)===2)));const f=normalView.nucleo.prof.fila,keep=Math.max(0,Number(stellar?.reserveSlots)||0);f.livres={vagas:Math.max(0,Number(f.livres?.vagas)||0),espera:Math.max(0,Number(f.livres?.espera)||0)};let reserve=keep;for(const k of ['espera','vagas']){const take=Math.min(f.livres[k],reserve);f.livres[k]-=take;reserve-=take;}}
       const normal=professionPlan(normalView,{...opt,stockManagedRids:combatManaged,craftType:state()?.active?.tmArea},window.P2.dados);
       const plan=normal.op==='coletar'?normal:hourglass|| (stellar?.op?stellar:stock.op?stock:normal);
       if(!(stellarDemand && normal.op==='fazer') && !stellar?.op && !stock.op && !hourglass && !['coletar','expMandar','expAbrir'].includes(plan.op) && (gathering || (stellarDemand || combatDemand || !plan.op) && options().gather) && await gatherTick(normalView,ticket))return;
