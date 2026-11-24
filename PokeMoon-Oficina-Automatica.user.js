@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Poke Moon - Oficina Automática
 // @namespace    local.pokemoon.profissoes
-// @version      1.7.2
+// @version      1.7.3
 // @description  Bancada com estoque disponível quando a busca está desligada, prioridade de XP, consumíveis, pedidos, estufa e expedições.
 // @match        https://idlepokemoon.com.br/play*
 // @run-at       document-idle
@@ -224,11 +224,13 @@ function gatherRecipeCandidates(v,o={}) {
 function gatherEligibleZones(origin,zones,allowed,level) {
   if(!origin || origin.categoria==='boss' || origin.semRota)return [];
   const routes=(origin.rotas||[]).filter(r=>!r.boss && !r.lutas && typeof r.tier==='string');
+  const tierOrder=['SR','S','UR','PRISMA','M','L','SSR','A','B','C'];
+  const rank=tier=>{const index=tierOrder.indexOf(tier);return index<0?tierOrder.length:index;};
   const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
   return zones.filter(z=>Number.isInteger(z.i) && !z.boss && !z.chefe && !z.luta && !z.bossId && Number(z.lv)<=level && allowed.has(String(z.b||z.esp||'').toLowerCase()) &&
     Array.isArray(z.loot) && z.loot.some(x=>norm(x)===norm(origin.item)) && routes.some(r=>r.tier===z.tier))
     .map(z=>({...z,shinyOnly:!routes.some(r=>r.tier===z.tier && !r.shiny)}))
-    .sort((a,b)=>Number(a.shinyOnly)-Number(b.shinyOnly) || Number(a.lv)-Number(b.lv) || a.i-b.i);
+    .sort((a,b)=>rank(a.tier)-rank(b.tier) || Number(a.shinyOnly)-Number(b.shinyOnly) || Number(a.lv)-Number(b.lv) || a.i-b.i);
 }
 function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.activeId);return typeof a?.tmArea==='string' && a.tmArea.trim().length>0;}
 
@@ -530,7 +532,7 @@ function gatherHasAoE(s){const a=s?.active || (s?.team || []).find(x=>x.id===s.a
     }
     const destination={index:target.zone.i,name:target.zone.n,furiosa:gatherHasAoE(s)};
     gathering.destination=destination;gathering.phase='travelling';saveGather();
-    render('Buscando '+target.id+' · grau '+target.grau+': '+target.tem+'/'+target.qtd+'\n'+destination.name+' · '+(destination.furiosa?'Furiosa (TM AoE)':'Padrão')+(target.zone.shinyOnly?' · depende de shiny':''));
+    render('Buscando '+target.id+' · grau '+target.grau+': '+target.tem+'/'+target.qtd+'\n'+destination.name+' · Tier '+target.zone.tier+' · '+(destination.furiosa?'Furiosa (TM AoE)':'Padrão')+(target.zone.shinyOnly?' · depende de shiny':''));
     await gatherTravel(destination,ticket);if(ticket!==generation)return true;
     gathering.phase='hunting';saveGather();return true;
   }
